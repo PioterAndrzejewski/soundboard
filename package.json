@@ -12,7 +12,10 @@
     "dev:main": "tsc -p tsconfig.main.json -w",
     "dev:renderer": "webpack serve --mode development",
     "dev:electron": "wait-on http://localhost:3000 && electron .",
-    "watch": "npm run dev"
+    "watch": "npm run dev",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win"
   },
   "keywords": ["electron", "midi", "soundboard", "audio"],
   "author": "",
@@ -27,6 +30,7 @@
     "concurrently": "^8.2.0",
     "css-loader": "^6.8.0",
     "electron": "^28.0.0",
+    "electron-builder": "^24.9.0",
     "html-webpack-plugin": "^5.5.0",
     "postcss": "^8.4.0",
     "postcss-loader": "^7.3.0",
@@ -48,5 +52,31 @@
     "react-dom": "^18.2.0",
     "react-redux": "^9.0.0",
     "uuid": "^9.0.0"
+  },
+  "build": {
+    "appId": "com.midisoundboard.app",
+    "productName": "MIDI Soundboard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }
