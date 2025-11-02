@@ -101,7 +101,7 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ midiHandler }) => {
           >
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold text-dark-200 uppercase">Master Volume</h3>
-              <span className={`text-sm ${settings.volumeMapping ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className={`text-sm transition-opacity ${settings.volumeMapping ? 'opacity-100 text-green-400' : 'opacity-30 text-gray-400'}`}>
                 🎹
               </span>
             </div>

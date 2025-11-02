@@ -12,9 +12,10 @@ interface SoundsGridProps {
   sounds: Sound[];
   onRemove: (soundId: string) => void;
   soundManager: SoundManager | null;
+  onAddSound: () => void;
 }
 
-const SoundsGrid: React.FC<SoundsGridProps> = ({ sounds, onRemove, soundManager }) => {
+const SoundsGrid: React.FC<SoundsGridProps> = ({ sounds, onRemove, soundManager, onAddSound }) => {
   const dispatch = useAppDispatch();
 
   const sensors = useSensors(
@@ -62,7 +63,7 @@ const SoundsGrid: React.FC<SoundsGridProps> = ({ sounds, onRemove, soundManager 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={sortedSounds.map(s => s.id)} strategy={rectSortingStrategy}>
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(max(200px, calc((100% - 7 * 1rem) / 8)), 1fr))' }}>
+        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', maxWidth: 'calc(140px * 8 + 2rem * 7)' }}>
           {sortedSounds.map(sound => (
             <SoundCard
               key={sound.id}
@@ -71,6 +72,15 @@ const SoundsGrid: React.FC<SoundsGridProps> = ({ sounds, onRemove, soundManager 
               soundManager={soundManager}
             />
           ))}
+
+          {/* Add Sound button */}
+          <button
+            onClick={onAddSound}
+            className="bg-dark-600 border-2 border-dashed border-dark-400 hover:border-blue-500 hover:bg-dark-500 rounded-lg p-2 transition-all min-h-[120px] flex flex-col items-center justify-center gap-2"
+          >
+            <span className="text-3xl text-dark-300">+</span>
+            <span className="text-xs text-dark-300 font-medium">Add Sound</span>
+          </button>
         </div>
       </SortableContext>
     </DndContext>

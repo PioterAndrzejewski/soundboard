@@ -447,11 +447,12 @@ const App: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 flex flex-col overflow-hidden">
           <TabBar />
-          <div className="flex-1 overflow-auto p-6">
+          <div className="flex-1 overflow-auto p-3">
             <SoundsGrid
               sounds={filteredSounds}
               onRemove={handleRemoveSound}
               soundManager={soundManagerRef.current}
+              onAddSound={handleAddSound}
             />
           </div>
         </main>

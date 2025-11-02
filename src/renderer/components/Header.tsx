@@ -153,9 +153,9 @@ const Header: React.FC<HeaderProps> = ({
           {projectName}
           {isDirty && " *"}
         </span>
+      </div>
 
-        <div className="w-px bg-dark-500 h-6"></div>
-
+      <div className="flex gap-2">
         {/* MIDI Mapping Mode Toggle - Icon Only */}
         <button
           onClick={() => dispatch(toggleMidiMappingMode())}
@@ -172,9 +172,6 @@ const Header: React.FC<HeaderProps> = ({
         >
           🎹
         </button>
-      </div>
-
-      <div className="flex gap-2">
 
         {/* Audio Output Selector */}
         <div className="relative">
