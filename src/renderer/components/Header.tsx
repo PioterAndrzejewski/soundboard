@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
-  startMappingTarget,
   toggleMidiMappingMode,
   setDirty,
 } from "../store/uiSlice";
@@ -15,7 +14,6 @@ interface HeaderProps {
   onSaveAs: () => void;
   onLoad: () => void;
   onAddSound: () => void;
-  onStopAll: () => void;
   midiHandler?: any;
 }
 
@@ -27,14 +25,12 @@ const Header: React.FC<HeaderProps> = ({
   onSaveAs,
   onLoad,
   onAddSound,
-  onStopAll,
   midiHandler,
 }) => {
   const dispatch = useAppDispatch();
   const projectName = projectPath
     ? projectPath.split(/[\\/]/).pop()
     : "Untitled";
-  const [stopAllFlash, setStopAllFlash] = useState(false);
   const [showMidiDevices, setShowMidiDevices] = useState(false);
   const [audioOutputDevices, setAudioOutputDevices] = useState<
     MediaDeviceInfo[]
@@ -65,35 +61,94 @@ const Header: React.FC<HeaderProps> = ({
     enumerateAudioDevices();
   }, []);
 
-  // Watch for Stop All trigger (from button or MIDI)
+  const [showFileMenu, setShowFileMenu] = useState(false);
+
+  // Close file menu when clicking outside
   useEffect(() => {
-    if (ui.lastStopAllTrigger > 0) {
-      setStopAllFlash(true);
-      const timer = setTimeout(() => setStopAllFlash(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [ui.lastStopAllTrigger]);
+    if (!showFileMenu) return;
 
-  const isMappingStopAll =
-    ui.isMidiMappingMode && ui.mappingTarget === "stopall";
-  const stopAllHasMappingTitle = settings.stopAllMapping
-    ? `Mapped to: ${settings.stopAllMapping.deviceName} Note${
-        settings.stopAllMapping.note
-      } Ch${settings.stopAllMapping.channel + 1}`
-    : "Not mapped";
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.file-menu-container')) {
+        setShowFileMenu(false);
+      }
+    };
 
-  const handleStopAllClick = () => {
-    if (ui.isMidiMappingMode && !ui.mappingTarget) {
-      dispatch(startMappingTarget("stopall"));
-    } else if (!ui.isMidiMappingMode) {
-      onStopAll();
-    }
-  };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFileMenu]);
+
+  // Close MIDI devices menu when clicking outside
+  useEffect(() => {
+    if (!showMidiDevices) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.midi-devices-container')) {
+        setShowMidiDevices(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMidiDevices]);
 
   return (
     <header className="bg-dark-600 border-b-2 border-dark-500 px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <h1 className="text-xl font-semibold">MIDI Soundboard</h1>
+
+        {/* File Menu Dropdown */}
+        <div className="relative file-menu-container">
+          <button
+            onClick={() => setShowFileMenu(!showFileMenu)}
+            className="px-2 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
+            title="File menu"
+          >
+            ≡
+          </button>
+          {showFileMenu && (
+            <div className="absolute top-full left-0 mt-1 w-40 bg-dark-600 border-2 border-dark-500 rounded-lg shadow-xl z-50 overflow-hidden">
+              <button
+                onClick={() => {
+                  onNew();
+                  setShowFileMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-500 transition-colors"
+              >
+                New
+              </button>
+              <button
+                onClick={() => {
+                  onLoad();
+                  setShowFileMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-500 transition-colors"
+              >
+                Open
+              </button>
+              <button
+                onClick={() => {
+                  onSave();
+                  setShowFileMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-500 transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  onSaveAs();
+                  setShowFileMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-500 transition-colors rounded-b-lg"
+              >
+                Save As
+              </button>
+            </div>
+          )}
+        </div>
+
         <span className="text-dark-200 text-sm">
           {projectName}
           {isDirty && " *"}
@@ -101,10 +156,10 @@ const Header: React.FC<HeaderProps> = ({
 
         <div className="w-px bg-dark-500 h-6"></div>
 
-        {/* MIDI Mapping Mode Toggle */}
+        {/* MIDI Mapping Mode Toggle - Icon Only */}
         <button
           onClick={() => dispatch(toggleMidiMappingMode())}
-          className={`px-4 py-1.5 rounded text-sm font-medium transition-all ${
+          className={`px-3 py-1.5 rounded text-lg transition-all ${
             ui.isMidiMappingMode
               ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
               : "bg-dark-500 hover:bg-dark-400"
@@ -115,80 +170,11 @@ const Header: React.FC<HeaderProps> = ({
               : "Enter MIDI mapping mode"
           }
         >
-          {ui.isMidiMappingMode ? "🎹 Mapping Mode: ON" : "🎹 MIDI Mapping"}
+          🎹
         </button>
-
-        <div
-          className={`relative rounded transition-all ${
-            ui.isMidiMappingMode
-              ? "ring-2 ring-purple-500 hover:ring-purple-400 cursor-pointer"
-              : ""
-          } ${isMappingStopAll ? "ring-2 ring-green-500 animate-pulse" : ""}`}
-          onClick={handleStopAllClick}
-          title={
-            ui.isMidiMappingMode
-              ? "Click to map MIDI key"
-              : stopAllHasMappingTitle
-          }
-        >
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => {
-                if (!ui.isMidiMappingMode) {
-                  e.stopPropagation();
-                  onStopAll();
-                }
-              }}
-              className={`px-4 py-1.5 rounded text-sm font-medium transition-all ${
-                stopAllFlash
-                  ? "bg-red-400 ring-2 ring-red-300 scale-105"
-                  : "bg-red-600 hover:bg-red-500"
-              } ${ui.isMidiMappingMode ? "cursor-pointer" : ""}`}
-            >
-              Stop All
-            </button>
-            <span
-              className={`text-sm ${
-                settings.stopAllMapping ? "text-green-400" : "text-gray-500"
-              }`}
-            >
-              🎹
-            </span>
-          </div>
-          {isMappingStopAll && (
-            <div className="absolute top-full mt-1 left-0 right-0 p-2 bg-green-900 border border-green-500 rounded text-xs text-green-300 animate-pulse whitespace-nowrap z-50">
-              ⏳ Listening for MIDI key...
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="flex gap-2">
-        <button
-          onClick={onNew}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
-        >
-          New
-        </button>
-        <button
-          onClick={onLoad}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
-        >
-          Open
-        </button>
-        <button
-          onClick={onSave}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
-        >
-          Save
-        </button>
-        <button
-          onClick={onSaveAs}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
-        >
-          Save As
-        </button>
-        <div className="w-px bg-dark-500 mx-2"></div>
 
         {/* Audio Output Selector */}
         <div className="relative">
@@ -216,7 +202,7 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* MIDI Devices Button */}
-        <div className="relative">
+        <div className="relative midi-devices-container">
           <button
             onClick={() => setShowMidiDevices(!showMidiDevices)}
             className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors flex items-center gap-1"
@@ -231,7 +217,7 @@ const Header: React.FC<HeaderProps> = ({
           </button>
 
           {showMidiDevices && (
-            <div className="absolute top-full right-0 mt-2 w-80 bg-dark-600 border-2 border-dark-500 rounded-lg shadow-xl z-50">
+            <div className="absolute top-full right-0 mt-2 w-80 bg-dark-600 border-2 border-dark-500 rounded-lg shadow-xl z-50 overflow-hidden">
               <div className="p-4 border-b border-dark-500 flex items-center justify-between">
                 <h3 className="font-semibold">Connected MIDI Devices</h3>
                 <button

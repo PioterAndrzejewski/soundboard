@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { toggleActiveSoundsPanel } from '../store/uiSlice';
+import { toggleActiveSoundsPanel, startMappingTarget } from '../store/uiSlice';
 import { AudioEngine } from '../audioEngine';
 
 interface ActiveSoundsPanelProps {
   audioEngine: AudioEngine | null;
+  onStopAll: () => void;
 }
 
-const ActiveSoundsPanel: React.FC<ActiveSoundsPanelProps> = ({ audioEngine }) => {
+const ActiveSoundsPanel: React.FC<ActiveSoundsPanelProps> = ({ audioEngine, onStopAll }) => {
   const dispatch = useAppDispatch();
   const ui = useAppSelector(state => state.ui);
   const sounds = useAppSelector(state => state.sounds.sounds);
+  const settings = useAppSelector(state => state.settings);
+  const [stopAllFlash, setStopAllFlash] = useState(false);
   const [playingSounds, setPlayingSounds] = useState<Array<{
     playingId: string;
     soundId: string;
@@ -46,11 +49,33 @@ const ActiveSoundsPanel: React.FC<ActiveSoundsPanelProps> = ({ audioEngine }) =>
     return () => clearInterval(interval);
   }, [audioEngine, sounds]);
 
+  // Watch for Stop All trigger (from button or MIDI)
+  useEffect(() => {
+    if (ui.lastStopAllTrigger > 0) {
+      setStopAllFlash(true);
+      const timer = setTimeout(() => setStopAllFlash(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [ui.lastStopAllTrigger]);
+
   const formatTime = (seconds: number): string => {
     if (!isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const isMappingStopAll = ui.isMidiMappingMode && ui.mappingTarget === 'stopall';
+  const stopAllHasMappingTitle = settings.stopAllMapping
+    ? `Mapped to: ${settings.stopAllMapping.deviceName} Note${settings.stopAllMapping.note} Ch${settings.stopAllMapping.channel + 1}`
+    : 'Not mapped';
+
+  const handleStopAllClick = () => {
+    if (ui.isMidiMappingMode && !ui.mappingTarget) {
+      dispatch(startMappingTarget('stopall'));
+    } else if (!ui.isMidiMappingMode) {
+      onStopAll();
+    }
   };
 
   if (!ui.isActiveSoundsPanelOpen) {
@@ -141,6 +166,51 @@ const ActiveSoundsPanel: React.FC<ActiveSoundsPanelProps> = ({ audioEngine }) =>
             ))}
           </div>
         )}
+      </div>
+
+      {/* Stop All Button */}
+      <div className="bg-dark-600 border-t-2 border-dark-500 p-4">
+        <div
+          className={`relative rounded transition-all ${
+            ui.isMidiMappingMode
+              ? "ring-2 ring-purple-500 hover:ring-purple-400 cursor-pointer"
+              : ""
+          } ${isMappingStopAll ? "ring-2 ring-green-500 animate-pulse" : ""}`}
+          onClick={handleStopAllClick}
+          title={
+            ui.isMidiMappingMode
+              ? "Click to map MIDI key"
+              : stopAllHasMappingTitle
+          }
+        >
+          <button
+            onClick={(e) => {
+              if (!ui.isMidiMappingMode) {
+                e.stopPropagation();
+                onStopAll();
+              }
+            }}
+            className={`w-full px-4 py-2.5 rounded text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              stopAllFlash
+                ? "bg-red-400 ring-2 ring-red-300 scale-105"
+                : "bg-red-600 hover:bg-red-500"
+            } ${ui.isMidiMappingMode ? "cursor-pointer" : ""}`}
+          >
+            Stop All
+            <span
+              className={`text-sm transition-opacity ${
+                settings.stopAllMapping ? "opacity-100 text-green-400" : "opacity-30 text-gray-400"
+              }`}
+            >
+              🎹
+            </span>
+          </button>
+          {isMappingStopAll && (
+            <div className="absolute bottom-full mb-1 left-0 right-0 p-2 bg-green-900 border border-green-500 rounded text-xs text-green-300 animate-pulse whitespace-nowrap z-50 text-center">
+              ⏳ Listening for MIDI key...
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

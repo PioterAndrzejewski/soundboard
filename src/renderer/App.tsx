@@ -441,7 +441,6 @@ const App: React.FC = () => {
         onSaveAs={handleSaveProjectAs}
         onLoad={handleLoadProject}
         onAddSound={handleAddSound}
-        onStopAll={handleStopAll}
         midiHandler={midiHandlerRef.current}
       />
 
@@ -457,7 +456,10 @@ const App: React.FC = () => {
           </div>
         </main>
 
-        <ActiveSoundsPanel audioEngine={audioEngineRef.current} />
+        <ActiveSoundsPanel
+          audioEngine={audioEngineRef.current}
+          onStopAll={handleStopAll}
+        />
       </div>
 
       <BottomPanel midiHandler={midiHandlerRef.current} />
