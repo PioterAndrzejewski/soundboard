@@ -174,12 +174,8 @@ function setupIpcHandlers() {
       const buffer = await fs.readFile(filePath);
       console.log('Main process: File read successfully, size:', buffer.length, 'bytes');
 
-      // Convert Node.js Buffer to ArrayBuffer
-      // Using buffer.buffer directly can have issues with slicing, so create a copy
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-      console.log('Main process: Returning ArrayBuffer, size:', arrayBuffer.byteLength);
-
-      return arrayBuffer;
+      // Return the Node.js Buffer directly - Electron will handle the serialization
+      return buffer;
     } catch (error) {
       console.error('Main process: Failed to read audio file:', error);
       throw error;

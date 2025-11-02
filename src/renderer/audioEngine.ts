@@ -38,10 +38,39 @@ export class AudioEngine {
   public async loadSound(sound: Sound): Promise<void> {
     try {
       console.log('Loading sound from:', sound.filePath);
+      console.log('AudioContext state:', this.audioContext.state);
+
+      // Resume AudioContext if it's suspended (required by Chrome autoplay policy)
+      if (this.audioContext.state === 'suspended') {
+        console.log('Resuming AudioContext...');
+        await this.audioContext.resume();
+        console.log('AudioContext resumed, state:', this.audioContext.state);
+      }
 
       // Use IPC to read the file from the main process
-      const arrayBuffer = await window.electronAPI.readAudioFile(sound.filePath);
-      console.log('Audio file read, size:', arrayBuffer.byteLength, 'bytes');
+      const receivedData = await window.electronAPI.readAudioFile(sound.filePath);
+      console.log('Audio file read, type:', typeof receivedData, 'length:', receivedData?.length || receivedData?.byteLength);
+
+      // Convert to ArrayBuffer
+      let arrayBuffer: ArrayBuffer;
+      if (receivedData instanceof ArrayBuffer) {
+        console.log('Received ArrayBuffer directly');
+        arrayBuffer = receivedData.slice(0);
+      } else if (ArrayBuffer.isView(receivedData)) {
+        console.log('Received ArrayBuffer view, converting...');
+        arrayBuffer = receivedData.buffer.slice(
+          receivedData.byteOffset,
+          receivedData.byteOffset + receivedData.byteLength
+        );
+      } else if (Array.isArray(receivedData)) {
+        console.log('Received array, converting to Uint8Array...');
+        const uint8 = new Uint8Array(receivedData);
+        arrayBuffer = uint8.buffer;
+      } else {
+        throw new Error('Unexpected data type received from IPC');
+      }
+
+      console.log('ArrayBuffer ready, size:', arrayBuffer.byteLength, 'bytes');
 
       if (arrayBuffer.byteLength === 0) {
         throw new Error('Audio file is empty');
@@ -51,9 +80,15 @@ export class AudioEngine {
 
       // Use the callback-based version for better error handling
       const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+        // Set a timeout in case decode hangs
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Audio decoding timeout after 30 seconds'));
+        }, 30000);
+
         this.audioContext.decodeAudioData(
           arrayBuffer,
           (buffer) => {
+            clearTimeout(timeoutId);
             console.log('Decode successful!', {
               duration: buffer.duration,
               channels: buffer.numberOfChannels,
@@ -62,6 +97,7 @@ export class AudioEngine {
             resolve(buffer);
           },
           (error) => {
+            clearTimeout(timeoutId);
             console.error('Decode error:', error);
             reject(new Error(`Failed to decode audio: ${error?.message || 'Unknown error'}`));
           }
