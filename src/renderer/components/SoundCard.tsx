@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Sound } from '../../shared/types';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSelectedSound, openSettingsModal } from '../store/uiSlice';
 import { SoundManager } from '../soundManager';
 
@@ -14,6 +14,8 @@ interface SoundCardProps {
 
 const SoundCard: React.FC<SoundCardProps> = ({ sound, onRemove, soundManager }) => {
   const dispatch = useAppDispatch();
+  const ui = useAppSelector(state => state.ui);
+  const [isHighlighted, setIsHighlighted] = useState(false);
 
   const {
     attributes,
@@ -29,6 +31,15 @@ const SoundCard: React.FC<SoundCardProps> = ({ sound, onRemove, soundManager }) 
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  // Watch for MIDI triggers
+  useEffect(() => {
+    if (ui.lastTriggeredSoundId === sound.id && ui.lastTriggeredSoundTimestamp > 0) {
+      setIsHighlighted(true);
+      const timer = setTimeout(() => setIsHighlighted(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [ui.lastTriggeredSoundId, ui.lastTriggeredSoundTimestamp, sound.id]);
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,7 +68,11 @@ const SoundCard: React.FC<SoundCardProps> = ({ sound, onRemove, soundManager }) 
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="bg-dark-600 rounded-lg p-4 border-2 border-transparent hover:border-blue-600 transition-all"
+      className={`bg-dark-600 rounded-lg p-4 border-2 transition-all ${
+        isHighlighted
+          ? 'border-green-500 ring-4 ring-green-500 ring-opacity-50 scale-105'
+          : 'border-transparent hover:border-blue-600'
+      }`}
     >
       <div className="mb-3 cursor-move" {...listeners}>
         <h3 className="font-semibold text-base mb-1 truncate">{sound.name}</h3>

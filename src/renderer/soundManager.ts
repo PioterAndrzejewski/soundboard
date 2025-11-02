@@ -9,6 +9,7 @@ export class SoundManager {
   private sounds: Map<string, Sound> = new Map();
   private settings: AppSettings;
   private activeSoundsPerMapping: Map<string, string[]> = new Map(); // midiKey -> playingIds
+  private onSoundTriggeredCallback: ((soundId: string) => void) | null = null;
 
   constructor(audioEngine: AudioEngine, midiHandler: MidiHandler, settings: AppSettings) {
     this.audioEngine = audioEngine;
@@ -21,6 +22,10 @@ export class SoundManager {
 
     // Listen to MIDI messages
     this.midiHandler.addListener(this.handleMidiMessage.bind(this));
+  }
+
+  public onSoundTriggered(callback: (soundId: string) => void): void {
+    this.onSoundTriggeredCallback = callback;
   }
 
   private handleMidiMessage(message: MidiMessage): void {
@@ -46,6 +51,11 @@ export class SoundManager {
 
   private handleNoteOn(sound: Sound, velocity: number): void {
     const mappingKey = this.getMappingKey(sound.midiMapping!);
+
+    // Notify that sound was triggered
+    if (this.onSoundTriggeredCallback) {
+      this.onSoundTriggeredCallback(sound.id);
+    }
 
     if (sound.settings.playMode === 'trigger') {
       // Trigger mode: start playing, don't track for note off

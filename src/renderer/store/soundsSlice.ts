@@ -31,8 +31,15 @@ const soundsSlice = createSlice({
     reorderSounds: (state, action: PayloadAction<Sound[]>) => {
       state.sounds = action.payload;
     },
+    reassignSoundsTab: (state, action: PayloadAction<{ fromTabId: string; toTabId: string }>) => {
+      state.sounds.forEach(sound => {
+        if (sound.tabId === action.payload.fromTabId) {
+          sound.tabId = action.payload.toTabId;
+        }
+      });
+    },
   },
 });
 
-export const { setSounds, addSound, removeSound, updateSound, reorderSounds } = soundsSlice.actions;
+export const { setSounds, addSound, removeSound, updateSound, reorderSounds, reassignSoundsTab } = soundsSlice.actions;
 export default soundsSlice.reducer;

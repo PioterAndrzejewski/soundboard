@@ -24,6 +24,7 @@ export interface Sound {
   midiMapping?: MidiMapping;
   settings: SoundSettings;
   order: number; // For drag and drop ordering
+  tabId?: string; // Tab assignment (optional for backwards compatibility)
 }
 
 export interface MidiDevice {
@@ -58,12 +59,21 @@ export interface AppState {
   settings: AppSettings;
 }
 
+// Tab definition
+export interface Tab {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+}
+
 // Project data structure for save/load
 export interface Project {
   name: string;
   version: string;
   sounds: Sound[];
   settings: AppSettings;
+  tabs?: Tab[]; // Optional for backwards compatibility
   createdAt: string;
   updatedAt: string;
 }

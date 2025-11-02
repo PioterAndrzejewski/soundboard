@@ -196,8 +196,35 @@ export class AudioEngine {
   }
 
   public stopAllSounds(): void {
-    const playingIds = Array.from(this.playingSounds.keys());
-    playingIds.forEach(id => this.stopSound(id));
+    const playingSounds = Array.from(this.playingSounds.values());
+
+    playingSounds.forEach(playingSound => {
+      const { audio, settings, id: playingId } = playingSound;
+      const fadeOutMs = settings.fadeOutMs || 100; // Use at least 100ms fade out
+
+      // Apply fade out to all sounds
+      const fadeSteps = 20;
+      const stepTime = fadeOutMs / fadeSteps;
+      const startVolume = audio.volume;
+      const volumeStep = startVolume / fadeSteps;
+
+      let currentStep = 0;
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        audio.volume = Math.max(0, startVolume - (volumeStep * currentStep));
+        if (currentStep >= fadeSteps) {
+          clearInterval(fadeInterval);
+          audio.pause();
+          this.cleanupSound(playingId);
+        }
+      }, stepTime);
+
+      playingSound.fadeOutTimeout = setTimeout(() => {
+        clearInterval(fadeInterval);
+        audio.pause();
+        this.cleanupSound(playingId);
+      }, fadeOutMs + 100);
+    });
   }
 
   public getPlayingSounds(): string[] {

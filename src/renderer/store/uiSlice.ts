@@ -6,6 +6,8 @@ interface ExtendedUIState extends UIState {
   isMidiMappingMode: boolean;
   mappingTarget: 'volume' | 'stopall' | 'sound' | null;
   isActiveSoundsPanelOpen: boolean;
+  lastTriggeredSoundId: string | null;
+  lastTriggeredSoundTimestamp: number;
 }
 
 const initialState: ExtendedUIState = {
@@ -19,6 +21,8 @@ const initialState: ExtendedUIState = {
   isMidiMappingMode: false,
   mappingTarget: null,
   isActiveSoundsPanelOpen: true,
+  lastTriggeredSoundId: null,
+  lastTriggeredSoundTimestamp: 0,
 };
 
 const uiSlice = createSlice({
@@ -74,6 +78,10 @@ const uiSlice = createSlice({
     toggleActiveSoundsPanel: (state) => {
       state.isActiveSoundsPanelOpen = !state.isActiveSoundsPanelOpen;
     },
+    triggerSoundHighlight: (state, action: PayloadAction<string>) => {
+      state.lastTriggeredSoundId = action.payload;
+      state.lastTriggeredSoundTimestamp = Date.now();
+    },
   },
 });
 
@@ -90,5 +98,6 @@ export const {
   startMappingTarget,
   clearMappingTarget,
   toggleActiveSoundsPanel,
+  triggerSoundHighlight,
 } = uiSlice.actions;
 export default uiSlice.reducer;

@@ -2,12 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store/hooks';
 import { setSounds, addSound, removeSound, updateSound, reorderSounds } from './store/soundsSlice';
 import { setSettings, setMasterVolume } from './store/settingsSlice';
-import { setCurrentProjectPath, setDirty, triggerStopAll } from './store/uiSlice';
+import { setCurrentProjectPath, setDirty, triggerStopAll, triggerSoundHighlight } from './store/uiSlice';
+import { setTabs } from './store/tabsSlice';
 import { AudioEngine } from './audioEngine';
 import { MidiHandler } from './midiHandler';
 import { SoundManager } from './soundManager';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import TabBar from './components/TabBar';
 import SoundsGrid from './components/SoundsGrid';
 import SoundSettingsModal from './components/SoundSettingsModal';
 import MidiListeningOverlay from './components/MidiListeningOverlay';
@@ -19,6 +21,17 @@ const App: React.FC = () => {
   const sounds = useAppSelector(state => state.sounds.sounds);
   const settings = useAppSelector(state => state.settings);
   const ui = useAppSelector(state => state.ui);
+  const activeTabId = useAppSelector(state => state.tabs.activeTabId);
+  const tabs = useAppSelector(state => state.tabs.tabs);
+
+  // Filter sounds by active tab
+  const filteredSounds = sounds.filter(sound => {
+    // If sound doesn't have a tabId (old projects), show in first tab
+    if (!sound.tabId) {
+      return activeTabId === tabs[0]?.id;
+    }
+    return sound.tabId === activeTabId;
+  });
 
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const midiHandlerRef = useRef<MidiHandler | null>(null);
@@ -51,6 +64,11 @@ const App: React.FC = () => {
           midiHandlerRef.current,
           settings
         );
+
+        // Set up callback for MIDI-triggered sounds
+        soundManagerRef.current.onSoundTriggered((soundId) => {
+          dispatch(triggerSoundHighlight(soundId));
+        });
 
         console.log('Engines initialized successfully');
       } catch (error) {
@@ -154,6 +172,7 @@ const App: React.FC = () => {
         version: '1.0.0',
         sounds,
         settings,
+        tabs,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -176,6 +195,7 @@ const App: React.FC = () => {
         version: '1.0.0',
         sounds,
         settings,
+        tabs,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -202,6 +222,12 @@ const App: React.FC = () => {
       if (result) {
         dispatch(setSounds(result.project.sounds));
         dispatch(setSettings(result.project.settings));
+
+        // Load tabs if they exist, otherwise keep default tab
+        if (result.project.tabs && result.project.tabs.length > 0) {
+          dispatch(setTabs(result.project.tabs));
+        }
+
         dispatch(setCurrentProjectPath(result.filePath));
         dispatch(setDirty(false));
 
@@ -235,8 +261,11 @@ const App: React.FC = () => {
         const sound = await soundManagerRef.current.addSound(filePath, fileName);
         console.log('✅ Sound added to manager:', sound.id);
 
-        dispatch(addSound(sound));
-        console.log('✅ Sound added to Redux store');
+        // Assign to active tab
+        const soundWithTab = { ...sound, tabId: activeTabId || tabs[0]?.id };
+
+        dispatch(addSound(soundWithTab));
+        console.log('✅ Sound added to Redux store with tab:', soundWithTab.tabId);
 
         dispatch(setDirty(true));
         console.log('✅ All done!');
@@ -280,21 +309,25 @@ const App: React.FC = () => {
         onStopAll={handleStopAll}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          midiHandler={midiHandlerRef.current}
-          soundManager={soundManagerRef.current}
-        />
+      <div className="flex flex-1 overflow-hidden flex-col">
+        <TabBar />
 
-        <main className="flex-1 overflow-auto p-6">
-          <SoundsGrid
-            sounds={sounds}
-            onRemove={handleRemoveSound}
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar
+            midiHandler={midiHandlerRef.current}
             soundManager={soundManagerRef.current}
           />
-        </main>
 
-        <ActiveSoundsPanel audioEngine={audioEngineRef.current} />
+          <main className="flex-1 overflow-auto p-6">
+            <SoundsGrid
+              sounds={filteredSounds}
+              onRemove={handleRemoveSound}
+              soundManager={soundManagerRef.current}
+            />
+          </main>
+
+          <ActiveSoundsPanel audioEngine={audioEngineRef.current} />
+        </div>
       </div>
 
       <SoundSettingsModal
