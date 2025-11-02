@@ -4,7 +4,9 @@ import {
   startMappingTarget,
   clearMappingTarget,
   toggleActiveSoundsPanel,
+  toggleMidiMappingMode,
 } from "../store/uiSlice";
+import { updateSettings, setDirty } from '../store/settingsSlice';
 
 interface HeaderProps {
   projectPath: string | null;
@@ -15,6 +17,7 @@ interface HeaderProps {
   onLoad: () => void;
   onAddSound: () => void;
   onStopAll: () => void;
+  midiHandler: any;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -26,14 +29,40 @@ const Header: React.FC<HeaderProps> = ({
   onLoad,
   onAddSound,
   onStopAll,
+  midiHandler,
 }) => {
   const dispatch = useAppDispatch();
   const projectName = projectPath
     ? projectPath.split(/[\\/]/).pop()
     : "Untitled";
   const [stopAllFlash, setStopAllFlash] = useState(false);
+  const [showMidiDevices, setShowMidiDevices] = useState(false);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [midiDevices, setMidiDevices] = useState<any[]>([]);
   const ui = useAppSelector((state) => state.ui);
   const settings = useAppSelector((state) => state.settings);
+
+  // Load MIDI devices
+  useEffect(() => {
+    if (midiHandler) {
+      setMidiDevices(midiHandler.getDevices());
+    }
+  }, [midiHandler]);
+
+  // Enumerate audio output devices
+  useEffect(() => {
+    const enumerateAudioDevices = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+        setAudioOutputDevices(audioOutputs);
+      } catch (error) {
+        console.error('Failed to enumerate audio devices:', error);
+      }
+    };
+
+    enumerateAudioDevices();
+  }, []);
 
   // Watch for Stop All trigger (from button or MIDI)
   useEffect(() => {

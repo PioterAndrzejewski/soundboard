@@ -20,12 +20,12 @@ import { AudioEngine } from "./audioEngine";
 import { MidiHandler } from "./midiHandler";
 import { SoundManager } from "./soundManager";
 import Header from "./components/Header";
-import Sidebar from "./components/Sidebar";
 import TabBar from "./components/TabBar";
 import SoundsGrid from "./components/SoundsGrid";
 import SoundSettingsModal from "./components/SoundSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
+import BottomPanel from "./components/BottomPanel";
 import { Project } from "../shared/types";
 
 const App: React.FC = () => {
@@ -419,11 +419,6 @@ const App: React.FC = () => {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          midiHandler={midiHandlerRef.current}
-          soundManager={soundManagerRef.current}
-        />
-
         <main className="flex-1 flex flex-col overflow-hidden">
           <TabBar />
           <div className="flex-1 overflow-auto p-6">
@@ -437,6 +432,8 @@ const App: React.FC = () => {
 
         <ActiveSoundsPanel audioEngine={audioEngineRef.current} />
       </div>
+
+      <BottomPanel midiHandler={midiHandlerRef.current} />
 
       <SoundSettingsModal
         soundManager={soundManagerRef.current}
