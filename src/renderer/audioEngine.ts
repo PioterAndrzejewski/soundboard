@@ -208,6 +208,26 @@ export class AudioEngine {
     return Array.from(this.playingSounds.values()).some(ps => ps.soundId === soundId);
   }
 
+  public getPlayingSoundsInfo(): Array<{
+    playingId: string;
+    soundId: string;
+    soundName: string;
+    currentTime: number;
+    duration: number;
+    playMode: string;
+    isFadingOut: boolean;
+  }> {
+    return Array.from(this.playingSounds.values()).map(ps => ({
+      playingId: ps.id,
+      soundId: ps.soundId,
+      soundName: '', // Will be filled by caller
+      currentTime: ps.audio.currentTime,
+      duration: ps.audio.duration || 0,
+      playMode: ps.settings.playMode,
+      isFadingOut: !!ps.fadeOutTimeout,
+    }));
+  }
+
   private cleanupSound(playingId: string): void {
     const playingSound = this.playingSounds.get(playingId);
     if (playingSound) {

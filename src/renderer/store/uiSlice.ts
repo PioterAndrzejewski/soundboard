@@ -5,6 +5,7 @@ interface ExtendedUIState extends UIState {
   lastStopAllTrigger: number;
   isMidiMappingMode: boolean;
   mappingTarget: 'volume' | 'stopall' | 'sound' | null;
+  isActiveSoundsPanelOpen: boolean;
 }
 
 const initialState: ExtendedUIState = {
@@ -17,6 +18,7 @@ const initialState: ExtendedUIState = {
   lastStopAllTrigger: 0,
   isMidiMappingMode: false,
   mappingTarget: null,
+  isActiveSoundsPanelOpen: true,
 };
 
 const uiSlice = createSlice({
@@ -69,6 +71,9 @@ const uiSlice = createSlice({
       state.isMidiListening = false;
       state.listeningMode = 'none';
     },
+    toggleActiveSoundsPanel: (state) => {
+      state.isActiveSoundsPanelOpen = !state.isActiveSoundsPanelOpen;
+    },
   },
 });
 
@@ -84,5 +89,6 @@ export const {
   toggleMidiMappingMode,
   startMappingTarget,
   clearMappingTarget,
+  toggleActiveSoundsPanel,
 } = uiSlice.actions;
 export default uiSlice.reducer;

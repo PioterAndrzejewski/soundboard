@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { startMappingTarget, clearMappingTarget } from '../store/uiSlice';
+import { startMappingTarget, clearMappingTarget, toggleActiveSoundsPanel } from '../store/uiSlice';
 
 interface HeaderProps {
   projectPath: string | null;
@@ -76,6 +76,17 @@ const Header: React.FC<HeaderProps> = ({
         <div className="w-px bg-dark-500 mx-2"></div>
         <button onClick={onAddSound} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors">
           Add Sound
+        </button>
+        <button
+          onClick={() => dispatch(toggleActiveSoundsPanel())}
+          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+            ui.isActiveSoundsPanelOpen
+              ? 'bg-purple-600 hover:bg-purple-500'
+              : 'bg-dark-500 hover:bg-dark-400'
+          }`}
+          title={ui.isActiveSoundsPanelOpen ? 'Hide Active Sounds' : 'Show Active Sounds'}
+        >
+          {ui.isActiveSoundsPanelOpen ? '🎵 Active' : '🎵'}
         </button>
         <div
           className={`relative rounded transition-all ${

@@ -11,6 +11,7 @@ import Sidebar from './components/Sidebar';
 import SoundsGrid from './components/SoundsGrid';
 import SoundSettingsModal from './components/SoundSettingsModal';
 import MidiListeningOverlay from './components/MidiListeningOverlay';
+import ActiveSoundsPanel from './components/ActiveSoundsPanel';
 import { Project } from '../shared/types';
 
 const App: React.FC = () => {
@@ -292,6 +293,8 @@ const App: React.FC = () => {
             soundManager={soundManagerRef.current}
           />
         </main>
+
+        <ActiveSoundsPanel audioEngine={audioEngineRef.current} />
       </div>
 
       <SoundSettingsModal
