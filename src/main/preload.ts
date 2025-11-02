@@ -49,8 +49,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 // Expose audioIO for WaveformEditor
 contextBridge.exposeInMainWorld('audioIO', {
-  readFile: (filePath: string) =>
-    ipcRenderer.invoke('read-audio-file', filePath),
+  readFile: async (filePath: string): Promise<ArrayBuffer> => {
+    const buffer = await ipcRenderer.invoke('read-audio-file', filePath);
+
+    // Convert to proper ArrayBuffer if needed
+    if (buffer instanceof ArrayBuffer) {
+      return buffer;
+    } else if (buffer && typeof buffer === 'object' && buffer.buffer instanceof ArrayBuffer) {
+      // Handle Node.js Buffer (has .buffer property)
+      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    } else if (ArrayBuffer.isView(buffer)) {
+      // Handle typed arrays
+      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    } else {
+      throw new Error('Unexpected buffer type received from main process');
+    }
+  },
 });
 
 // Type declaration for the exposed API
