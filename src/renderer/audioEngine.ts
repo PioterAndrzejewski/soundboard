@@ -78,6 +78,16 @@ export class AudioEngine {
   }
 
   public async playSound(sound: Sound, velocity: number = 127): Promise<string> {
+    // For trigger and loop modes, if sound is already playing, fade it out first
+    if (sound.settings.playMode === 'trigger' || sound.settings.playMode === 'loop') {
+      const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
+        ps => ps.soundId === sound.id
+      );
+      if (alreadyPlaying.length > 0) {
+        alreadyPlaying.forEach(ps => this.stopSound(ps.id));
+      }
+    }
+
     const playingId = `${sound.id}-${Date.now()}`;
 
     console.log(`🎵 Playing sound: ${sound.name}`);
@@ -85,6 +95,7 @@ export class AudioEngine {
     // Create audio element
     const audio = new Audio();
     audio.src = this.getFileUrl(sound.filePath);
+    audio.loop = sound.settings.playMode === 'loop';
 
     // Set output device if specified
     if (this.outputDeviceId && 'setSinkId' in audio) {

@@ -1,6 +1,6 @@
 // Type definitions for MIDI Soundboard
 
-export type PlayMode = 'trigger' | 'gate';
+export type PlayMode = 'trigger' | 'gate' | 'loop';
 
 export interface MidiMapping {
   deviceId: string;
@@ -15,6 +15,8 @@ export interface SoundSettings {
   fadeOutMs: number;
   volume: number; // 0-1
   outputDeviceId?: string;
+  startTime?: number; // in seconds
+  endTime?: number; // in seconds
 }
 
 export interface Sound {

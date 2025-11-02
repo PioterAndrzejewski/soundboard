@@ -1,31 +1,43 @@
-import React, { useEffect, useRef } from 'react';
-import { useAppDispatch, useAppSelector } from './store/hooks';
-import { setSounds, addSound, removeSound, updateSound, reorderSounds } from './store/soundsSlice';
-import { setSettings, setMasterVolume } from './store/settingsSlice';
-import { setCurrentProjectPath, setDirty, triggerStopAll, triggerSoundHighlight, stopMidiListening } from './store/uiSlice';
-import { setTabs } from './store/tabsSlice';
-import { AudioEngine } from './audioEngine';
-import { MidiHandler } from './midiHandler';
-import { SoundManager } from './soundManager';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import TabBar from './components/TabBar';
-import SoundsGrid from './components/SoundsGrid';
-import SoundSettingsModal from './components/SoundSettingsModal';
-import MidiListeningOverlay from './components/MidiListeningOverlay';
-import ActiveSoundsPanel from './components/ActiveSoundsPanel';
-import { Project } from '../shared/types';
+import React, { useEffect, useRef } from "react";
+import { useAppDispatch, useAppSelector } from "./store/hooks";
+import {
+  setSounds,
+  addSound,
+  removeSound,
+  updateSound,
+  reorderSounds,
+} from "./store/soundsSlice";
+import { setSettings, setMasterVolume } from "./store/settingsSlice";
+import {
+  setCurrentProjectPath,
+  setDirty,
+  triggerStopAll,
+  triggerSoundHighlight,
+  stopMidiListening,
+} from "./store/uiSlice";
+import { setTabs } from "./store/tabsSlice";
+import { AudioEngine } from "./audioEngine";
+import { MidiHandler } from "./midiHandler";
+import { SoundManager } from "./soundManager";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import TabBar from "./components/TabBar";
+import SoundsGrid from "./components/SoundsGrid";
+import SoundSettingsModal from "./components/SoundSettingsModal";
+import MidiListeningOverlay from "./components/MidiListeningOverlay";
+import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
+import { Project } from "../shared/types";
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
-  const sounds = useAppSelector(state => state.sounds.sounds);
-  const settings = useAppSelector(state => state.settings);
-  const ui = useAppSelector(state => state.ui);
-  const activeTabId = useAppSelector(state => state.tabs.activeTabId);
-  const tabs = useAppSelector(state => state.tabs.tabs);
+  const sounds = useAppSelector((state) => state.sounds.sounds);
+  const settings = useAppSelector((state) => state.settings);
+  const ui = useAppSelector((state) => state.ui);
+  const activeTabId = useAppSelector((state) => state.tabs.activeTabId);
+  const tabs = useAppSelector((state) => state.tabs.tabs);
 
   // Filter sounds by active tab
-  const filteredSounds = sounds.filter(sound => {
+  const filteredSounds = sounds.filter((sound) => {
     // If sound doesn't have a tabId (old projects), show in first tab
     if (!sound.tabId) {
       return activeTabId === tabs[0]?.id;
@@ -41,17 +53,17 @@ const App: React.FC = () => {
   useEffect(() => {
     // Add global error handler to catch crashes
     const handleError = (event: ErrorEvent) => {
-      console.error('Global error caught:', event.error);
+      console.error("Global error caught:", event.error);
       event.preventDefault();
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('Unhandled promise rejection:', event.reason);
+      console.error("Unhandled promise rejection:", event.reason);
       event.preventDefault();
     };
 
-    window.addEventListener('error', handleError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
     const initEngines = async () => {
       try {
@@ -70,17 +82,20 @@ const App: React.FC = () => {
           dispatch(triggerSoundHighlight(soundId));
         });
 
-        console.log('Engines initialized successfully');
+        console.log("Engines initialized successfully");
       } catch (error) {
-        console.error('Failed to initialize engines:', error);
+        console.error("Failed to initialize engines:", error);
       }
     };
 
     initEngines();
 
     return () => {
-      window.removeEventListener('error', handleError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener("error", handleError);
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection
+      );
       soundManagerRef.current?.destroy();
     };
   }, []);
@@ -103,33 +118,36 @@ const App: React.FC = () => {
 
     const handleMidiMessage = (message: any) => {
       // Debug logging for CC messages
-      if (message.type === 'cc') {
-        console.log('🎛️ MIDI CC Message:', {
+      if (message.type === "cc") {
+        console.log("🎛️ MIDI CC Message:", {
           device: message.deviceName,
           deviceId: message.deviceId,
           channel: message.channel + 1, // Display as 1-16 instead of 0-15
           ccNumber: message.ccNumber,
           value: message.value,
-          percentage: Math.round((message.value / 127) * 100) + '%'
+          percentage: Math.round((message.value / 127) * 100) + "%",
         });
       }
 
       // Handle volume mapping
-      if (message.type === 'cc' && settings.volumeMapping) {
+      if (message.type === "cc" && settings.volumeMapping) {
         const vm = settings.volumeMapping;
         if (
           message.deviceId === vm.deviceId &&
           message.ccNumber === vm.ccNumber &&
           message.channel === vm.channel
         ) {
-          console.log('✅ Matched volume mapping!', { value: message.value, volume: message.value / 127 });
+          console.log("✅ Matched volume mapping!", {
+            value: message.value,
+            volume: message.value / 127,
+          });
           const volume = message.value / 127;
           dispatch(setMasterVolume(volume));
         }
       }
 
       // Handle stop all mapping
-      if (message.type === 'noteon' && settings.stopAllMapping) {
+      if (message.type === "noteon" && settings.stopAllMapping) {
         const sam = settings.stopAllMapping;
         if (
           message.deviceId === sam.deviceId &&
@@ -145,33 +163,46 @@ const App: React.FC = () => {
     return () => {
       midiHandlerRef.current?.removeListener(handleMidiMessage);
     };
-  }, [midiHandlerRef.current, settings.volumeMapping, settings.stopAllMapping, dispatch]);
+  }, [
+    midiHandlerRef.current,
+    settings.volumeMapping,
+    settings.stopAllMapping,
+    dispatch,
+  ]);
 
   // Handle direct MIDI assignment for sounds (when not in modal)
   useEffect(() => {
-    if (!midiHandlerRef.current || !ui.isMidiListening || ui.listeningMode !== 'sound' || ui.isSettingsModalOpen) return;
+    if (
+      !midiHandlerRef.current ||
+      !ui.isMidiListening ||
+      ui.listeningMode !== "sound" ||
+      ui.isSettingsModalOpen
+    )
+      return;
     if (!ui.selectedSoundId) return;
 
     const handleMidiMessage = (message: any) => {
-      if (message.type === 'noteon') {
+      if (message.type === "noteon") {
         // Update the sound with the new MIDI mapping
-        dispatch(updateSound({
-          id: ui.selectedSoundId,
-          updates: {
-            midiMapping: {
-              deviceId: message.deviceId,
-              deviceName: message.deviceName,
-              note: message.note,
-              channel: message.channel,
+        dispatch(
+          updateSound({
+            id: ui.selectedSoundId || "",
+            updates: {
+              midiMapping: {
+                deviceId: message.deviceId,
+                deviceName: message.deviceName,
+                note: message.note,
+                channel: message.channel,
+              },
             },
-          },
-        }));
+          })
+        );
 
         // Update the sound manager
         if (soundManagerRef.current) {
-          const sound = sounds.find(s => s.id === ui.selectedSoundId);
+          const sound = sounds.find((s) => s.id === ui.selectedSoundId);
           if (sound) {
-            soundManagerRef.current.updateSound(ui.selectedSoundId, {
+            soundManagerRef.current.updateSound(ui.selectedSoundId || "", {
               ...sound,
               midiMapping: {
                 deviceId: message.deviceId,
@@ -193,22 +224,34 @@ const App: React.FC = () => {
     return () => {
       midiHandlerRef.current?.removeListener(handleMidiMessage);
     };
-  }, [midiHandlerRef.current, ui.isMidiListening, ui.listeningMode, ui.selectedSoundId, ui.isSettingsModalOpen, sounds, dispatch]);
+  }, [
+    midiHandlerRef.current,
+    ui.isMidiListening,
+    ui.listeningMode,
+    ui.selectedSoundId,
+    ui.isSettingsModalOpen,
+    sounds,
+    dispatch,
+  ]);
 
   // Handle project operations
   const handleNewProject = async () => {
     if (ui.isDirty) {
-      const confirmed = window.confirm('You have unsaved changes. Create new project?');
+      const confirmed = window.confirm(
+        "You have unsaved changes. Create new project?"
+      );
       if (!confirmed) return;
     }
 
     await window.electronAPI.newProject();
     dispatch(setSounds([]));
-    dispatch(setSettings({
-      masterVolume: 0.8,
-      defaultFadeInMs: 100,
-      defaultFadeOutMs: 500,
-    }));
+    dispatch(
+      setSettings({
+        masterVolume: 0.8,
+        defaultFadeInMs: 100,
+        defaultFadeOutMs: 500,
+      })
+    );
     dispatch(setCurrentProjectPath(null));
     dispatch(setDirty(false));
   };
@@ -216,8 +259,11 @@ const App: React.FC = () => {
   const handleSaveProject = async () => {
     try {
       const project: Project = {
-        name: ui.currentProjectPath ? ui.currentProjectPath.split('/').pop()?.replace('.sboard', '') || 'Untitled' : 'Untitled',
-        version: '1.0.0',
+        name: ui.currentProjectPath
+          ? ui.currentProjectPath.split("/").pop()?.replace(".sboard", "") ||
+            "Untitled"
+          : "Untitled",
+        version: "1.0.0",
         sounds,
         settings,
         tabs,
@@ -225,12 +271,15 @@ const App: React.FC = () => {
         updatedAt: new Date().toISOString(),
       };
 
-      const filePath = await window.electronAPI.saveProject(project, ui.currentProjectPath || undefined);
+      const filePath = await window.electronAPI.saveProject(
+        project,
+        ui.currentProjectPath || undefined
+      );
       dispatch(setCurrentProjectPath(filePath));
       dispatch(setDirty(false));
     } catch (error: any) {
-      if (error.message !== 'Save canceled') {
-        console.error('Failed to save project:', error);
+      if (error.message !== "Save canceled") {
+        console.error("Failed to save project:", error);
         alert(`Failed to save project: ${error.message}`);
       }
     }
@@ -239,8 +288,8 @@ const App: React.FC = () => {
   const handleSaveProjectAs = async () => {
     try {
       const project: Project = {
-        name: 'Untitled',
-        version: '1.0.0',
+        name: "Untitled",
+        version: "1.0.0",
         sounds,
         settings,
         tabs,
@@ -252,8 +301,8 @@ const App: React.FC = () => {
       dispatch(setCurrentProjectPath(filePath));
       dispatch(setDirty(false));
     } catch (error: any) {
-      if (error.message !== 'Save canceled') {
-        console.error('Failed to save project:', error);
+      if (error.message !== "Save canceled") {
+        console.error("Failed to save project:", error);
         alert(`Failed to save project: ${error.message}`);
       }
     }
@@ -261,7 +310,9 @@ const App: React.FC = () => {
 
   const handleLoadProject = async () => {
     if (ui.isDirty) {
-      const confirmed = window.confirm('You have unsaved changes. Load project?');
+      const confirmed = window.confirm(
+        "You have unsaved changes. Load project?"
+      );
       if (!confirmed) return;
     }
 
@@ -291,39 +342,49 @@ const App: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to load project:', error);
+      console.error("Failed to load project:", error);
       alert(`Failed to load project: ${error}`);
     }
   };
 
   const handleAddSound = async () => {
     try {
-      console.log('📂 Opening file picker...');
+      console.log("📂 Opening file picker...");
       const filePath = await window.electronAPI.selectSoundFile();
-      console.log('📂 Selected file:', filePath);
+      console.log("📂 Selected file:", filePath);
 
       if (filePath && soundManagerRef.current) {
-        const fileName = filePath.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '') || 'Untitled';
-        console.log('➕ Adding sound:', fileName);
+        const fileName =
+          filePath
+            .split(/[\\/]/)
+            .pop()
+            ?.replace(/\.[^/.]+$/, "") || "Untitled";
+        console.log("➕ Adding sound:", fileName);
 
-        const sound = await soundManagerRef.current.addSound(filePath, fileName);
-        console.log('✅ Sound added to manager:', sound.id);
+        const sound = await soundManagerRef.current.addSound(
+          filePath,
+          fileName
+        );
+        console.log("✅ Sound added to manager:", sound.id);
 
         // Assign to active tab
         const soundWithTab = { ...sound, tabId: activeTabId || tabs[0]?.id };
 
         dispatch(addSound(soundWithTab));
-        console.log('✅ Sound added to Redux store with tab:', soundWithTab.tabId);
+        console.log(
+          "✅ Sound added to Redux store with tab:",
+          soundWithTab.tabId
+        );
 
         dispatch(setDirty(true));
-        console.log('✅ All done!');
+        console.log("✅ All done!");
       }
     } catch (error: any) {
-      console.error('❌ Failed to add sound:', error);
-      console.error('Error details:', {
+      console.error("❌ Failed to add sound:", error);
+      console.error("Error details:", {
         message: error?.message,
         stack: error?.stack,
-        name: error?.name
+        name: error?.name,
       });
       alert(`Failed to add sound: ${error?.message || error}`);
     }
@@ -385,7 +446,7 @@ const App: React.FC = () => {
       <MidiListeningOverlay
         assignmentTarget={
           ui.selectedSoundId
-            ? sounds.find(s => s.id === ui.selectedSoundId)?.name
+            ? sounds.find((s) => s.id === ui.selectedSoundId)?.name
             : undefined
         }
       />
