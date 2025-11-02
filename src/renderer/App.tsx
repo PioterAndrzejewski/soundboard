@@ -62,6 +62,18 @@ const App: React.FC = () => {
     if (!midiHandlerRef.current) return;
 
     const handleMidiMessage = (message: any) => {
+      // Debug logging for CC messages
+      if (message.type === 'cc') {
+        console.log('🎛️ MIDI CC Message:', {
+          device: message.deviceName,
+          deviceId: message.deviceId,
+          channel: message.channel + 1, // Display as 1-16 instead of 0-15
+          ccNumber: message.ccNumber,
+          value: message.value,
+          percentage: Math.round((message.value / 127) * 100) + '%'
+        });
+      }
+
       // Handle volume mapping
       if (message.type === 'cc' && settings.volumeMapping) {
         const vm = settings.volumeMapping;
@@ -70,6 +82,7 @@ const App: React.FC = () => {
           message.ccNumber === vm.ccNumber &&
           message.channel === vm.channel
         ) {
+          console.log('✅ Matched volume mapping!', { value: message.value, volume: message.value / 127 });
           const volume = message.value / 127;
           dispatch(setMasterVolume(volume));
         }
