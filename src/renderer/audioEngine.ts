@@ -125,8 +125,8 @@ export class AudioEngine {
     const targetVolume = sound.settings.volume * velocityFactor;
     audio.volume = this.calculateVolume(targetVolume);
 
-    // Apply fade in for gate mode
-    if (sound.settings.playMode === 'gate' && sound.settings.fadeInMs > 0) {
+    // Apply fade in for gate and trigger modes
+    if ((sound.settings.playMode === 'gate' || sound.settings.playMode === 'trigger') && sound.settings.fadeInMs > 0) {
       audio.volume = 0;
       const fadeSteps = 20;
       const stepTime = sound.settings.fadeInMs / fadeSteps;
@@ -206,9 +206,10 @@ export class AudioEngine {
     const playingSound = this.playingSounds.get(playingId);
     if (!playingSound) return;
 
-    const { audio, settings, isGateMode } = playingSound;
+    const { audio, settings } = playingSound;
 
-    if (isGateMode && settings.fadeOutMs > 0) {
+    // Apply fade out for gate and trigger modes
+    if ((settings.playMode === 'gate' || settings.playMode === 'trigger') && settings.fadeOutMs > 0) {
       // Apply fade out
       const fadeSteps = 20;
       const stepTime = settings.fadeOutMs / fadeSteps;

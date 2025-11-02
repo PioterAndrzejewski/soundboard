@@ -72,11 +72,22 @@ export class SoundManager {
       }).catch((error) => {
         console.error(`Failed to play sound ${sound.name}:`, error);
       });
+    } else if (sound.settings.playMode === 'loop') {
+      // Loop mode: start playing and loop until stopped manually or note off
+      this.audioEngine.playSound(sound, velocity).then((playingId) => {
+        if (!this.activeSoundsPerMapping.has(mappingKey)) {
+          this.activeSoundsPerMapping.set(mappingKey, []);
+        }
+        this.activeSoundsPerMapping.get(mappingKey)!.push(playingId);
+      }).catch((error) => {
+        console.error(`Failed to play sound ${sound.name}:`, error);
+      });
     }
   }
 
   private handleNoteOff(sound: Sound): void {
-    if (sound.settings.playMode !== 'gate') return;
+    // Only handle note off for gate and loop modes
+    if (sound.settings.playMode !== 'gate' && sound.settings.playMode !== 'loop') return;
 
     const mappingKey = this.getMappingKey(sound.midiMapping!);
     const playingIds = this.activeSoundsPerMapping.get(mappingKey);
