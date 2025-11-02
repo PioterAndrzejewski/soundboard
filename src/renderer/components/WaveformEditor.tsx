@@ -1,12 +1,40 @@
-import React, { useRef, useEffect, useState } from "react";
+// WaveformEditor.tsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+/** Exposed by your preload, e.g. contextBridge.exposeInMainWorld("audioIO", { readFile }) */
+declare global {
+  interface Window {
+    audioIO?: {
+      readFile: (absPath: string) => Promise<ArrayBuffer>;
+    };
+  }
+}
 
 interface WaveformEditorProps {
-  filePath: string;
-  startTime: number;
-  endTime: number;
-  duration: number;
+  filePath: string; // absolute path to audio file
+  startTime: number; // seconds
+  endTime: number; // seconds (0 or <= start => treated as "to end")
+  duration: number; // optional initial duration (can be 0)
   onStartTimeChange: (time: number) => void;
   onEndTimeChange: (time: number) => void;
+  /** Optional CSS height (px). Canvas adapts to width automatically. Default 120. */
+  height?: number;
+  /** Max number of vertical bars to render. Default 1000. */
+  maxBars?: number;
+}
+
+/** Reuse a single AudioContext to avoid churn and device exhaustion. */
+const sharedAC: AudioContext =
+  (globalThis as any).__sharedAC__ ||
+  new (window.AudioContext || (window as any).webkitAudioContext)();
+(globalThis as any).__sharedAC__ = sharedAC;
+
+/** Small utility: robust file:// URL for display/fallback labels only. */
+function toFileURL(absPath: string) {
+  // Minimal conversion; not used for fetch(). Good for <audio> fallback only if needed.
+  let p = absPath.replace(/\\/g, "/");
+  if (/^[A-Za-z]:\//.test(p)) p = "/" + p; // ensure leading slash on Windows
+  return `file://${p.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 const WaveformEditor: React.FC<WaveformEditorProps> = ({
@@ -16,247 +44,254 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   duration,
   onStartTimeChange,
   onEndTimeChange,
+  height = 120,
+  maxBars = 1000,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [waveformData, setWaveformData] = useState<
-    Array<{ min: number; max: number }>
-  >([]);
-  const [isDraggingStart, setIsDraggingStart] = useState(false);
-  const [isDraggingEnd, setIsDraggingEnd] = useState(false);
-  const [audioDuration, setAudioDuration] = useState(duration);
+  const [waveform, setWaveform] = useState<Array<{ min: number; max: number }>>(
+    []
+  );
+  const [audioDuration, setAudioDuration] = useState<number>(
+    Number.isFinite(duration) && duration > 0 ? duration : 0
+  );
+  const [dragging, setDragging] = useState<"start" | "end" | null>(null);
 
-  // Load audio file and generate real waveform using pure JavaScript
+  // ---- Load + decode + build peaks (lightweight) ----
   useEffect(() => {
-    const loadAudio = async () => {
+    if (!filePath) return;
+    let cancelled = false;
+
+    (async () => {
       try {
-        console.log("Loading audio for:", filePath);
-
-        // Normalize the file path for different platforms
-        const normalizedPath = filePath.replace(/\\/g, "/");
-        const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
-          ? `file:///${normalizedPath}`
-          : `file://${normalizedPath}`;
-
-        // Fetch the audio file as ArrayBuffer directly using fetch
-        const response = await fetch(fileUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch audio file: ${response.statusText}`);
+        if (!window.audioIO?.readFile) {
+          throw new Error(
+            "window.audioIO.readFile is not available. Expose it from preload."
+          );
         }
 
-        const arrayBuffer = await response.arrayBuffer();
-        console.log("ArrayBuffer loaded, size:", arrayBuffer.byteLength);
+        const arrayBuffer = await window.audioIO.readFile(filePath);
+        if (cancelled) return;
 
-        // Decode audio using Web Audio API
-        const audioContext = new AudioContext();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-        setAudioDuration(audioBuffer.duration);
-        console.log(
-          "Audio decoded, duration:",
-          audioBuffer.duration,
-          "seconds"
+        const audioBuffer = await sharedAC.decodeAudioData(
+          arrayBuffer.slice(0)
         );
+        if (cancelled) return;
 
-        // Extract waveform data
-        const channelData = audioBuffer.getChannelData(0);
-        const samples = audioBuffer.length;
+        const dur = audioBuffer.duration || 0;
+        if (dur > 0) setAudioDuration(dur);
+
+        // Build peaks quickly: cap number of bars and sample sparsely to avoid O(N) over huge files.
+        const ch0 = audioBuffer.getChannelData(0);
+        const total = ch0.length;
+        const buckets = Math.min(
+          maxBars,
+          Math.max(100, Math.ceil(total / 1500))
+        );
+        const step = Math.max(1, Math.floor(total / buckets));
+
+        const peaks = new Array<{ min: number; max: number }>(buckets);
+        for (let i = 0, idx = 0; i < buckets; i++, idx += step) {
+          let min = 1,
+            max = -1;
+          // stride by 32 frames inside each bucket for speed
+          const end = Math.min(total, idx + step);
+          for (let j = idx; j < end; j += 32) {
+            const v = ch0[j] || 0;
+            if (v < min) min = v;
+            if (v > max) max = v;
+          }
+          // handle empty/NaN
+          if (!Number.isFinite(min)) min = 0;
+          if (!Number.isFinite(max)) max = 0;
+          peaks[i] = { min, max };
+
+          // Yield every ~64 buckets to keep UI responsive
+          if ((i & 63) === 0) {
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => setTimeout(r, 0));
+            if (cancelled) return;
+          }
+        }
+
+        if (!cancelled) setWaveform(peaks);
+      } catch (err) {
+        console.error("Waveform load failed:", err);
+        // Fallback: synthetic envelope so UI still works
         const buckets = 500;
-        const blockSize = Math.floor(samples / buckets);
-        const peaks = [];
-
+        const fake: Array<{ min: number; max: number }> = new Array(buckets);
         for (let i = 0; i < buckets; i++) {
-          const start = i * blockSize;
-          const end = Math.min(start + blockSize, samples);
-          let min = 1;
-          let max = -1;
-
-          for (let j = start; j < end; j++) {
-            const value = channelData[j];
-            if (value < min) min = value;
-            if (value > max) max = value;
-          }
-
-          peaks.push({ min, max });
+          const t = i / (buckets - 1);
+          const env = Math.sin(Math.PI * t);
+          const wobble = Math.sin(t * 40) * 0.2;
+          const amp = Math.max(0, env * 0.7 + wobble);
+          fake[i] = { min: -amp, max: amp };
         }
+        setWaveform(fake);
 
-        setWaveformData(peaks);
-        audioContext.close();
-
-        console.log(
-          "✅ Real waveform generated with",
-          peaks.length,
-          "data points"
-        );
-      } catch (error) {
-        console.error("Failed to load audio:", error);
-
-        // Fallback: Load duration with HTML Audio and create placeholder waveform
+        // Best effort: try to at least read duration from <audio> tag
         try {
-          const audio = new Audio();
-          const normalizedPath = filePath.replace(/\\/g, "/");
-          const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
-            ? `file:///${normalizedPath}`
-            : `file://${normalizedPath}`;
-          audio.src = fileUrl;
-
+          const a = new Audio();
+          a.src = toFileURL(filePath);
           await new Promise<void>((resolve, reject) => {
-            audio.addEventListener("loadedmetadata", () => resolve());
-            audio.addEventListener("error", () =>
-              reject(new Error("Failed to load audio"))
-            );
+            a.addEventListener("loadedmetadata", () => resolve());
+            a.addEventListener("error", () => reject(new Error("meta error")));
           });
-
-          setAudioDuration(audio.duration);
-
-          // Create placeholder waveform
-          const buckets = 500;
-          const peaks = [];
-          for (let i = 0; i < buckets; i++) {
-            const position = i / buckets;
-            const envelope = Math.sin(position * Math.PI);
-            const variation = Math.sin(position * 50 + i) * 0.3;
-            const random = (Math.sin(i * 12.9898) * 43758.5453) % 1;
-            const amplitude = (envelope * 0.6 + variation + random * 0.3) * 0.7;
-            peaks.push({ min: -Math.abs(amplitude), max: Math.abs(amplitude) });
+          if (a.duration && Number.isFinite(a.duration)) {
+            setAudioDuration(a.duration);
           }
-          setWaveformData(peaks);
-
-          console.log("⚠️ Using placeholder waveform (real waveform failed)");
-        } catch (fallbackError) {
-          console.error("Fallback also failed:", fallbackError);
+        } catch {
+          /* ignore */
         }
       }
+    })();
+
+    return () => {
+      cancelled = true;
     };
+  }, [filePath, maxBars]);
 
-    if (filePath) {
-      loadAudio();
-    }
-  }, [filePath]);
-
-  // Draw waveform
+  // ---- Drawing ----
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || waveformData.length === 0) return;
+    if (!canvas || waveform.length === 0) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const barWidth = width / waveformData.length;
+    // Resize to CSS size * devicePixelRatio
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.clientWidth || 800;
+    const cssHeight = canvas.clientHeight || height;
+    const w = Math.max(1, Math.floor(cssWidth * dpr));
+    const h = Math.max(1, Math.floor(cssHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in CSS pixels
 
-    // Clear canvas
-    ctx.fillStyle = "#1f2937"; // dark-800
-    ctx.fillRect(0, 0, width, height);
+    const width = cssWidth;
+    const hCss = cssHeight;
 
-    // Calculate marker positions
-    const startX = (startTime / audioDuration) * width;
-    const endX = endTime > 0 ? (endTime / audioDuration) * width : width;
+    // Clear
+    ctx.fillStyle = "#1f2937"; // gray-800
+    ctx.fillRect(0, 0, width, hCss);
 
-    // Draw waveform using min/max peaks
-    const mid = height / 2;
-    waveformData.forEach((peak, index) => {
-      const x = index * barWidth + 0.5;
+    // Guard duration
+    const dur =
+      audioDuration > 0 && Number.isFinite(audioDuration) ? audioDuration : 0;
+    const sx = dur > 0 ? (startTime / dur) * width : 0;
+    const ex = dur > 0 ? (Math.max(endTime, startTime) / dur) * width : width;
 
-      // Highlight region between start and end
-      const isInRegion = x >= startX && x <= endX;
-      ctx.strokeStyle = isInRegion ? "#3b82f6" : "#4b5563"; // blue-500 : gray-600
-      ctx.lineWidth = Math.max(1, barWidth - 1);
+    // Draw waveform as vertical min/max lines
+    const mid = hCss / 2;
+    const barW = width / waveform.length;
+    for (let i = 0; i < waveform.length; i++) {
+      const { min, max } = waveform[i];
+      const x = i * barW + 0.5;
+      const inRegion = x >= sx && x <= (endTime > 0 ? ex : width);
 
-      // Draw vertical line from min to max
-      const minY = mid + peak.min * mid;
-      const maxY = mid + peak.max * mid;
+      ctx.strokeStyle = inRegion ? "#3b82f6" : "#4b5563"; // blue-500 / gray-600
+      ctx.lineWidth = Math.max(1, barW - 1);
+
+      const y1 = mid + min * (mid - 2);
+      const y2 = mid + max * (mid - 2);
 
       ctx.beginPath();
-      ctx.moveTo(x, minY);
-      ctx.lineTo(x, maxY);
+      ctx.moveTo(x, y1);
+      ctx.lineTo(x, y2);
       ctx.stroke();
-    });
+    }
 
-    // Draw start marker
-    ctx.fillStyle = "#10b981"; // green-500
-    ctx.fillRect(startX - 2, 0, 4, height);
-    ctx.fillStyle = "#10b981";
-    ctx.fillRect(startX - 8, 0, 16, 20);
-    ctx.fillStyle = "white";
-    ctx.font = "bold 10px Arial";
-    ctx.fillText("S", startX - 3, 13);
+    // Start marker
+    if (dur > 0) {
+      ctx.fillStyle = "#10b981"; // green-500
+      ctx.fillRect(sx - 2, 0, 4, hCss);
+      ctx.fillRect(sx - 8, 0, 16, 20);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 10px Arial";
+      ctx.fillText("S", sx - 3, 13);
 
-    // Draw end marker (always show, at end if not set)
-    const actualEndX = endTime > 0 ? endX : width;
-    ctx.fillStyle = "#ef4444"; // red-500
-    ctx.fillRect(actualEndX - 2, 0, 4, height);
-    ctx.fillStyle = "#ef4444";
-    ctx.fillRect(actualEndX - 8, 0, 16, 20);
-    ctx.fillStyle = "white";
-    ctx.font = "bold 10px Arial";
-    ctx.fillText("E", actualEndX - 3, 13);
-  }, [waveformData, startTime, endTime, audioDuration]);
+      // End marker (if specified, else at end)
+      const endX = endTime > 0 ? ex : width;
+      ctx.fillStyle = "#ef4444"; // red-500
+      ctx.fillRect(endX - 2, 0, 4, hCss);
+      ctx.fillRect(endX - 8, 0, 16, 20);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 10px Arial";
+      ctx.fillText("E", endX - 3, 13);
+    }
+  }, [waveform, startTime, endTime, audioDuration, height]);
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // ---- Drag handlers ----
+  const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width || canvas.width;
+
+    const dur = audioDuration || 0;
+    if (dur <= 0) return;
+
+    const sx = (startTime / dur) * width;
+    const ex = (Math.max(endTime, startTime) / dur) * width;
+    if (Math.abs(x - sx) < 10) setDragging("start");
+    else if (Math.abs(x - ex) < 10) setDragging("end");
+  };
+
+  const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!dragging) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = canvas.width;
+    const width = rect.width || canvas.width;
+    const dur = audioDuration || 0;
+    if (dur <= 0) return;
 
-    const startX = (startTime / audioDuration) * width;
-    const endX = endTime > 0 ? (endTime / audioDuration) * width : width;
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const t = (x / width) * dur;
 
-    // Check if clicking near start or end marker (always allow end marker dragging)
-    if (Math.abs(x - startX) < 10) {
-      setIsDraggingStart(true);
-    } else if (Math.abs(x - endX) < 10) {
-      setIsDraggingEnd(true);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas || (!isDraggingStart && !isDraggingEnd)) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = canvas.width;
-    const time = (x / width) * audioDuration;
-
-    if (isDraggingStart) {
-      const newStartTime = Math.max(
+    if (dragging === "start") {
+      const newStart = Math.max(
         0,
-        Math.min(time, endTime > 0 ? endTime - 0.1 : audioDuration)
+        Math.min(t, (endTime > 0 ? endTime : dur) - 0.05)
       );
-      onStartTimeChange(newStartTime);
-    } else if (isDraggingEnd) {
-      const newEndTime = Math.max(
-        startTime + 0.1,
-        Math.min(time, audioDuration)
-      );
-      onEndTimeChange(newEndTime);
+      onStartTimeChange(Number.isFinite(newStart) ? newStart : 0);
+    } else if (dragging === "end") {
+      const minEnd = Math.min(dur, Math.max(startTime + 0.05, 0));
+      const newEnd = Math.max(minEnd, Math.min(t, dur));
+      onEndTimeChange(Number.isFinite(newEnd) ? newEnd : minEnd);
     }
   };
 
-  const handleMouseUp = () => {
-    setIsDraggingStart(false);
-    setIsDraggingEnd(false);
-  };
+  const onMouseUp = () => setDragging(null);
+  const onMouseLeave = () => setDragging(null);
+
+  // ---- Render ----
+  const prettyDuration = useMemo(() => {
+    const d = audioDuration || 0;
+    if (!Number.isFinite(d) || d <= 0) return "—";
+    return `${d.toFixed(2)}s`;
+  }, [audioDuration]);
 
   return (
-    <div ref={containerRef} className="w-full">
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={120}
-        className="w-full border border-dark-500 rounded cursor-pointer"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      />
-      <div className="flex justify-between text-xs text-dark-300 mt-1">
+    <div className="w-full">
+      <div className="w-full border border-gray-700 rounded" style={{ height }}>
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full cursor-pointer block"
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseLeave}
+        />
+      </div>
+
+      <div className="flex justify-between text-xs text-gray-400 mt-1">
         <span>0:00</span>
-        <span>{audioDuration.toFixed(2)}s</span>
+        <span>{prettyDuration}</span>
       </div>
     </div>
   );

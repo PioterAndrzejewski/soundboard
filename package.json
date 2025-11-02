@@ -70,7 +70,9 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "sign": null,
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
