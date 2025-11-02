@@ -50,12 +50,24 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
         setAudioDuration(audio.duration);
         console.log('Audio loaded, duration:', audio.duration, 'seconds');
 
-        // Create simple placeholder waveform (bars of equal height)
+        // Create a more realistic looking waveform pattern
+        // We'll create a pseudo-random pattern that looks like audio
         const buckets = 500;
         const peaks = [];
+
         for (let i = 0; i < buckets; i++) {
-          // Create a simple wave pattern
-          peaks.push({ min: -0.5, max: 0.5 });
+          // Create varied amplitude using sine waves and pseudo-random values
+          const position = i / buckets;
+          const envelope = Math.sin(position * Math.PI); // Overall envelope
+          const variation = Math.sin(position * 50 + i) * 0.3; // High frequency variation
+          const random = (Math.sin(i * 12.9898) * 43758.5453) % 1; // Pseudo-random
+
+          const amplitude = (envelope * 0.6 + variation + random * 0.3) * 0.7;
+
+          peaks.push({
+            min: -Math.abs(amplitude),
+            max: Math.abs(amplitude)
+          });
         }
         setWaveformData(peaks);
       } catch (error) {
@@ -114,18 +126,18 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     ctx.fillStyle = '#10b981';
     ctx.fillRect(startX - 8, 0, 16, 20);
     ctx.fillStyle = 'white';
-    ctx.font = '10px Arial';
+    ctx.font = 'bold 10px Arial';
     ctx.fillText('S', startX - 3, 13);
 
-    // Draw end marker
-    if (endTime > 0) {
-      ctx.fillStyle = '#ef4444'; // red-500
-      ctx.fillRect(endX - 2, 0, 4, height);
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(endX - 8, 0, 16, 20);
-      ctx.fillStyle = 'white';
-      ctx.fillText('E', endX - 3, 13);
-    }
+    // Draw end marker (always show, at end if not set)
+    const actualEndX = endTime > 0 ? endX : width;
+    ctx.fillStyle = '#ef4444'; // red-500
+    ctx.fillRect(actualEndX - 2, 0, 4, height);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(actualEndX - 8, 0, 16, 20);
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText('E', actualEndX - 3, 13);
   }, [waveformData, startTime, endTime, audioDuration]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -139,10 +151,10 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     const startX = (startTime / audioDuration) * width;
     const endX = endTime > 0 ? (endTime / audioDuration) * width : width;
 
-    // Check if clicking near start or end marker
+    // Check if clicking near start or end marker (always allow end marker dragging)
     if (Math.abs(x - startX) < 10) {
       setIsDraggingStart(true);
-    } else if (endTime > 0 && Math.abs(x - endX) < 10) {
+    } else if (Math.abs(x - endX) < 10) {
       setIsDraggingEnd(true);
     }
   };
