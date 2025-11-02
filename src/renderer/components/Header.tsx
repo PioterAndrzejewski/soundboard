@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import {
-  toggleMidiMappingMode,
-  setDirty,
-} from "../store/uiSlice";
+import { toggleMidiMappingMode, setDirty } from "../store/uiSlice";
 import { updateSettings } from "../store/settingsSlice";
 
 interface HeaderProps {
@@ -69,13 +66,13 @@ const Header: React.FC<HeaderProps> = ({
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.file-menu-container')) {
+      if (!target.closest(".file-menu-container")) {
         setShowFileMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showFileMenu]);
 
   // Close MIDI devices menu when clicking outside
@@ -84,19 +81,19 @@ const Header: React.FC<HeaderProps> = ({
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.midi-devices-container')) {
+      if (!target.closest(".midi-devices-container")) {
         setShowMidiDevices(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMidiDevices]);
 
   return (
     <header className="bg-dark-600 border-b-2 border-dark-500 px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold">MIDI Soundboard</h1>
+        <h1 className="text-xl font-semibold">GIbellini Soundboard</h1>
 
         {/* File Menu Dropdown */}
         <div className="relative file-menu-container">
