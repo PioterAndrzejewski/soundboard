@@ -78,19 +78,33 @@ export class AudioEngine {
   }
 
   public async playSound(sound: Sound, velocity: number = 127): Promise<string> {
-    // For trigger and loop modes, if sound is already playing, fade it out first
-    if (sound.settings.playMode === 'trigger' || sound.settings.playMode === 'loop') {
+    // For trigger mode, if sound is already playing, fade it out and DON'T play again
+    if (sound.settings.playMode === 'trigger') {
       const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
         ps => ps.soundId === sound.id
       );
       if (alreadyPlaying.length > 0) {
+        console.log(`🔄 Trigger mode: fading out already playing sound: ${sound.name}`);
+        alreadyPlaying.forEach(ps => this.stopSound(ps.id));
+        // Return early - don't play again
+        return alreadyPlaying[0].id;
+      }
+    }
+
+    // For loop mode, if sound is already playing, fade it out first then play again
+    if (sound.settings.playMode === 'loop') {
+      const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
+        ps => ps.soundId === sound.id
+      );
+      if (alreadyPlaying.length > 0) {
+        console.log(`🔄 Loop mode: restarting sound: ${sound.name}`);
         alreadyPlaying.forEach(ps => this.stopSound(ps.id));
       }
     }
 
     const playingId = `${sound.id}-${Date.now()}`;
 
-    console.log(`🎵 Playing sound: ${sound.name}`);
+    console.log(`🎵 Playing sound: ${sound.name} (mode: ${sound.settings.playMode})`);
 
     // Create audio element
     const audio = new Audio();
@@ -139,9 +153,11 @@ export class AudioEngine {
 
     this.playingSounds.set(playingId, playingSound);
 
-    // Handle sound end
+    // Handle sound end (but not for loop mode since it loops automatically)
     audio.onended = () => {
-      this.cleanupSound(playingId);
+      if (sound.settings.playMode !== 'loop') {
+        this.cleanupSound(playingId);
+      }
     };
 
     audio.onerror = (error) => {
