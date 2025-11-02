@@ -38,9 +38,10 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
         let arrayBuffer: ArrayBuffer;
         if (buffer instanceof ArrayBuffer) {
           arrayBuffer = buffer;
-        } else if (buffer.buffer instanceof ArrayBuffer) {
+        } else if ('buffer' in buffer && buffer.buffer instanceof ArrayBuffer) {
           // Handle Node.js Buffer (has .buffer property)
-          arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+          const buf = buffer as any;
+          arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
         } else {
           throw new Error('Invalid buffer type received');
         }
