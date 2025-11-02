@@ -15,6 +15,7 @@ declare global {
       saveProjectAs: (project: Project) => Promise<string>;
       loadProject: () => Promise<{ project: Project; filePath: string } | null>;
       getRecentProjects: () => Promise<string[]>;
+      readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
     };
   }
 }

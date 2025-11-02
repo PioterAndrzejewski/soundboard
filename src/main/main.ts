@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { StorageManager } from './storage';
 import { ProjectManager } from './projectManager';
 import { IpcChannel, Project } from '../shared/types';
@@ -164,6 +165,17 @@ function setupIpcHandlers() {
 
   ipcMain.handle(IpcChannel.GET_RECENT_PROJECTS, async () => {
     return projectManager.getRecentProjects();
+  });
+
+  // Audio file reading
+  ipcMain.handle('read-audio-file', async (event, filePath: string) => {
+    try {
+      const buffer = await fs.readFile(filePath);
+      return buffer.buffer;
+    } catch (error) {
+      console.error('Failed to read audio file:', error);
+      throw error;
+    }
   });
 }
 

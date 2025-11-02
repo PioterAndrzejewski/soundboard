@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getRecentProjects: () =>
     ipcRenderer.invoke('get-recent-projects'),
+
+  // Audio file loading
+  readAudioFile: (filePath: string) =>
+    ipcRenderer.invoke('read-audio-file', filePath),
 });
 
 // Type declaration for the exposed API
@@ -59,6 +63,7 @@ declare global {
       saveProjectAs: (project: any) => Promise<string>;
       loadProject: () => Promise<{ project: any; filePath: string } | null>;
       getRecentProjects: () => Promise<string[]>;
+      readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
     };
   }
 }

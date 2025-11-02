@@ -37,16 +37,16 @@ export class AudioEngine {
 
   public async loadSound(sound: Sound): Promise<void> {
     try {
-      // Use fetch to load the audio file from the file path
-      // In Electron, we can use file:// protocol
-      const filePath = sound.filePath.startsWith('file://')
-        ? sound.filePath
-        : `file://${sound.filePath}`;
+      console.log('Loading sound from:', sound.filePath);
 
-      const response = await fetch(filePath);
-      const arrayBuffer = await response.arrayBuffer();
+      // Use IPC to read the file from the main process
+      const arrayBuffer = await window.electronAPI.readAudioFile(sound.filePath);
+
+      console.log('Audio file read, decoding...');
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+
       this.audioBuffers.set(sound.id, audioBuffer);
+      console.log(`Successfully loaded sound: ${sound.name}`);
     } catch (error) {
       console.error(`Failed to load sound ${sound.name}:`, error);
       throw error;
