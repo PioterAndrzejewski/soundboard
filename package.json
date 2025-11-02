@@ -2,7 +2,7 @@
   "name": "midi-soundboard",
   "version": "1.0.0",
   "description": "MIDI-controlled soundboard application",
-  "main": "dist/main.js",
+  "main": "dist/main/main.js",
   "scripts": {
     "build": "npm run build:main && npm run build:renderer",
     "build:main": "tsc -p tsconfig.main.json",

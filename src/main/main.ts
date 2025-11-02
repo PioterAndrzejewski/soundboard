@@ -19,8 +19,8 @@ function createWindow() {
     },
   });
 
-  // Load the index.html from dist
-  mainWindow.loadFile(path.join(__dirname, 'index.html')).catch(() => {
+  // Load the index.html from dist (webpack outputs to dist root)
+  mainWindow.loadFile(path.join(__dirname, '..', 'index.html')).catch(() => {
     // Fallback for development with webpack-dev-server
     mainWindow?.loadURL('http://localhost:3000');
   });
