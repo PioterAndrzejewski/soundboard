@@ -129,9 +129,11 @@ const ActiveSoundsPanel: React.FC<ActiveSoundsPanelProps> = ({ audioEngine, onSt
                   <span className={`text-xs px-2 py-0.5 rounded ${
                     sound.playMode === 'gate'
                       ? 'bg-blue-900 text-blue-300'
+                      : sound.playMode === 'loop'
+                      ? 'bg-purple-900 text-purple-300'
                       : 'bg-green-900 text-green-300'
                   }`}>
-                    {sound.playMode === 'gate' ? 'GATE' : 'TRIGGER'}
+                    {sound.playMode === 'gate' ? 'GATE' : sound.playMode === 'loop' ? 'LOOP' : 'TRIGGER'}
                   </span>
                 </div>
 
@@ -154,14 +156,6 @@ const ActiveSoundsPanel: React.FC<ActiveSoundsPanelProps> = ({ audioEngine, onSt
                   <span>{formatTime(sound.currentTime)}</span>
                   <span>{formatTime(sound.duration)}</span>
                 </div>
-
-                {/* Fading indicator */}
-                {sound.isFadingOut && (
-                  <div className="mt-2 text-xs text-yellow-400 flex items-center gap-1">
-                    <span className="animate-pulse">⏳</span>
-                    <span>Fading out...</span>
-                  </div>
-                )}
               </div>
             ))}
           </div>

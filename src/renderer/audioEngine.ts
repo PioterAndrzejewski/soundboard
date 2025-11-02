@@ -91,14 +91,16 @@ export class AudioEngine {
       }
     }
 
-    // For loop mode, if sound is already playing, fade it out first then play again
+    // For loop mode, behave like trigger mode: if already playing, stop it and DON'T play again
     if (sound.settings.playMode === 'loop') {
       const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
         ps => ps.soundId === sound.id
       );
       if (alreadyPlaying.length > 0) {
-        console.log(`🔄 Loop mode: restarting sound: ${sound.name}`);
+        console.log(`🔄 Loop mode: stopping looping sound: ${sound.name}`);
         alreadyPlaying.forEach(ps => this.stopSound(ps.id));
+        // Return early - don't play again (trigger behavior)
+        return alreadyPlaying[0].id;
       }
     }
 
