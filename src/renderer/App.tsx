@@ -71,6 +71,11 @@ const App: React.FC = () => {
     if (soundManagerRef.current) {
       soundManagerRef.current.updateSettings(settings);
     }
+
+    // Update audio output device
+    if (audioEngineRef.current) {
+      audioEngineRef.current.setOutputDevice(settings.defaultOutputDeviceId);
+    }
   }, [settings]);
 
   // Handle MIDI messages for volume and stop-all controls

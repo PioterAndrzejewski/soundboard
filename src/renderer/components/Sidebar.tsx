@@ -16,6 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
   const settings = useAppSelector(state => state.settings);
   const ui = useAppSelector(state => state.ui);
   const [midiDevices, setMidiDevices] = useState<any[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
   const [volumeFlash, setVolumeFlash] = useState(false);
   const [prevVolume, setPrevVolume] = useState(settings.masterVolume);
 
@@ -23,6 +24,20 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
     if (midiHandler) {
       setMidiDevices(midiHandler.getDevices());
     }
+
+    // Enumerate audio output devices
+    const enumerateAudioDevices = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+        setAudioOutputDevices(audioOutputs);
+        console.log('Audio output devices:', audioOutputs);
+      } catch (error) {
+        console.error('Failed to enumerate audio devices:', error);
+      }
+    };
+
+    enumerateAudioDevices();
   }, [midiHandler]);
 
   // Detect volume changes from MIDI and trigger flash
@@ -104,6 +119,25 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
             <div>CC: {settings.volumeMapping.ccNumber} Ch{settings.volumeMapping.channel + 1}</div>
           </div>
         )}
+      </section>
+
+      <section className="mb-6">
+        <h3 className="text-xs font-semibold text-dark-200 uppercase mb-3">Audio Output Device</h3>
+        <select
+          value={settings.defaultOutputDeviceId || 'default'}
+          onChange={(e) => {
+            dispatch(updateSettings({ defaultOutputDeviceId: e.target.value === 'default' ? undefined : e.target.value }));
+            dispatch(setDirty(true));
+          }}
+          className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="default">Default Output</option>
+          {audioOutputDevices.map(device => (
+            <option key={device.deviceId} value={device.deviceId}>
+              {device.label || `Device ${device.deviceId.substring(0, 8)}`}
+            </option>
+          ))}
+        </select>
       </section>
 
       <section className="mb-6">

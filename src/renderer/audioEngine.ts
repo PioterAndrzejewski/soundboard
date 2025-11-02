@@ -29,6 +29,20 @@ export class AudioEngine {
     this.masterGainNode.connect(this.audioContext.destination);
   }
 
+  public async setOutputDevice(deviceId: string | undefined): Promise<void> {
+    try {
+      // Check if setSinkId is supported
+      if ('setSinkId' in this.audioContext) {
+        await (this.audioContext as any).setSinkId(deviceId || '');
+        console.log('✅ Audio output device set to:', deviceId || 'default');
+      } else {
+        console.warn('⚠️ setSinkId not supported in this browser');
+      }
+    } catch (error) {
+      console.error('Failed to set audio output device:', error);
+    }
+  }
+
   public setMasterVolume(volume: number): void {
     this.masterGainNode.gain.setValueAtTime(
       Math.max(0, Math.min(1, volume)),

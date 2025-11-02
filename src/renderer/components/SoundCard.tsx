@@ -57,10 +57,9 @@ const SoundCard: React.FC<SoundCardProps> = ({ sound, onRemove, soundManager }) 
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className="bg-dark-600 rounded-lg p-4 cursor-move hover:bg-dark-500 border-2 border-transparent hover:border-blue-600 transition-all"
+      className="bg-dark-600 rounded-lg p-4 border-2 border-transparent hover:border-blue-600 transition-all"
     >
-      <div className="mb-3">
+      <div className="mb-3 cursor-move" {...listeners}>
         <h3 className="font-semibold text-base mb-1 truncate">{sound.name}</h3>
         <div className="text-xs text-dark-200">
           <div>Mode: {sound.settings.playMode}</div>
@@ -73,24 +72,30 @@ const SoundCard: React.FC<SoundCardProps> = ({ sound, onRemove, soundManager }) 
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={handlePlay}
-          className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
+          className="flex-1 min-w-[70px] px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
         >
-          Play
+          ▶ Play
+        </button>
+        <button
+          onClick={handleEdit}
+          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded text-sm transition-colors"
+        >
+          🎹 MIDI
         </button>
         <button
           onClick={handleEdit}
           className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
         >
-          Edit
+          ⚙️ Edit
         </button>
         <button
           onClick={handleDelete}
           className="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
         >
-          Delete
+          🗑️
         </button>
       </div>
     </div>

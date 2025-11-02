@@ -50,6 +50,7 @@ export interface AppSettings {
   stopAllMapping?: MidiMapping;
   defaultFadeInMs: number;
   defaultFadeOutMs: number;
+  defaultOutputDeviceId?: string; // Audio output device
 }
 
 export interface AppState {
