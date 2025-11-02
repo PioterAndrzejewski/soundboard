@@ -3,6 +3,7 @@ import { IpcChannel, Sound, AppSettings, Project } from '../shared/types';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
+console.log('Preload script is running');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Sound management
   addSound: (filePath: string, name: string) =>
@@ -44,6 +45,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRecentProjects: (): Promise<string[]> =>
     ipcRenderer.invoke(IpcChannel.GET_RECENT_PROJECTS),
 });
+
+console.log('electronAPI exposed to window');
 
 // Type declaration for the exposed API
 declare global {
