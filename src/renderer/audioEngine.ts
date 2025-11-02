@@ -17,6 +17,11 @@ export class AudioEngine {
   private playingSounds: Map<string, PlayingSound> = new Map();
   private audioBuffers: Map<string, AudioBuffer> = new Map();
   private outputNodes: Map<string, MediaStreamAudioDestinationNode> = new Map();
+  private loadingPromises: Map<string, Promise<AudioBuffer>> = new Map();
+
+  // Cache settings
+  private maxCachedBuffers = 20; // Keep max 20 decoded files in memory
+  private cacheAccessOrder: string[] = []; // For LRU eviction
 
   constructor() {
     this.audioContext = new AudioContext();
@@ -36,114 +41,132 @@ export class AudioEngine {
   }
 
   public async loadSound(sound: Sound): Promise<void> {
-    try {
-      console.log('Loading sound from:', sound.filePath);
-      console.log('AudioContext state:', this.audioContext.state);
+    // No longer preload - just validate the file exists
+    console.log(`📝 Registered sound: ${sound.name} (will load on-demand)`);
+  }
 
-      // Resume AudioContext if it's suspended (required by Chrome autoplay policy)
-      if (this.audioContext.state === 'suspended') {
-        console.log('Resuming AudioContext...');
-        await this.audioContext.resume();
-        console.log('AudioContext resumed, state:', this.audioContext.state);
-      }
+  public async preloadSound(sound: Sound): Promise<void> {
+    // Optional: allow manual preloading for frequently used sounds
+    console.log(`⚡ Preloading sound: ${sound.name}`);
+    await this.getOrLoadBuffer(sound);
+  }
 
-      // Use IPC to read the file from the main process
-      const receivedData: any = await window.electronAPI.readAudioFile(sound.filePath);
-      console.log('Audio file read, type:', typeof receivedData, 'constructor:', receivedData?.constructor?.name);
+  private async decodeAudioFile(filePath: string): Promise<AudioBuffer> {
+    console.log('Decoding audio from:', filePath);
+    console.log('AudioContext state:', this.audioContext.state);
 
-      // Convert to ArrayBuffer
-      let arrayBuffer: ArrayBuffer;
-      if (receivedData instanceof ArrayBuffer) {
-        console.log('Received ArrayBuffer directly');
-        arrayBuffer = receivedData.slice(0);
-      } else if (receivedData && typeof receivedData === 'object' && 'byteLength' in receivedData && 'buffer' in receivedData) {
-        console.log('Received ArrayBuffer view, converting...');
-        const view = receivedData as ArrayBufferView;
-        const sourceBuffer = view.buffer;
-        // Handle both ArrayBuffer and SharedArrayBuffer
-        if (sourceBuffer instanceof ArrayBuffer) {
-          arrayBuffer = sourceBuffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
-        } else {
-          // SharedArrayBuffer case - copy to regular ArrayBuffer
-          const uint8 = new Uint8Array(sourceBuffer, view.byteOffset, view.byteLength);
-          arrayBuffer = uint8.slice(0).buffer;
-        }
-      } else if (Array.isArray(receivedData)) {
-        console.log('Received array, converting to Uint8Array...');
-        const uint8 = new Uint8Array(receivedData);
-        arrayBuffer = uint8.buffer;
-      } else if (receivedData && typeof receivedData === 'object' && 'data' in receivedData) {
-        console.log('Received Buffer object, converting...');
-        const uint8 = new Uint8Array(receivedData.data);
-        arrayBuffer = uint8.buffer;
+    // Resume AudioContext if suspended
+    if (this.audioContext.state === 'suspended') {
+      console.log('Resuming AudioContext...');
+      await this.audioContext.resume();
+    }
+
+    // Read file via IPC
+    const receivedData: any = await window.electronAPI.readAudioFile(filePath);
+    console.log('Audio file read, type:', typeof receivedData, 'constructor:', receivedData?.constructor?.name);
+
+    // Convert to ArrayBuffer
+    let arrayBuffer: ArrayBuffer;
+    if (receivedData instanceof ArrayBuffer) {
+      arrayBuffer = receivedData.slice(0);
+    } else if (receivedData && typeof receivedData === 'object' && 'byteLength' in receivedData && 'buffer' in receivedData) {
+      const view = receivedData as ArrayBufferView;
+      const sourceBuffer = view.buffer;
+      if (sourceBuffer instanceof ArrayBuffer) {
+        arrayBuffer = sourceBuffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
       } else {
-        console.error('Unexpected data type:', typeof receivedData, receivedData);
-        throw new Error('Unexpected data type received from IPC');
+        const uint8 = new Uint8Array(sourceBuffer, view.byteOffset, view.byteLength);
+        arrayBuffer = uint8.slice(0).buffer;
       }
+    } else if (Array.isArray(receivedData)) {
+      const uint8 = new Uint8Array(receivedData);
+      arrayBuffer = uint8.buffer;
+    } else if (receivedData && typeof receivedData === 'object' && 'data' in receivedData) {
+      const uint8 = new Uint8Array(receivedData.data);
+      arrayBuffer = uint8.buffer;
+    } else {
+      throw new Error('Unexpected data type received from IPC');
+    }
 
-      console.log('ArrayBuffer ready, size:', arrayBuffer.byteLength, 'bytes');
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error('Audio file is empty');
+    }
 
-      if (arrayBuffer.byteLength === 0) {
-        throw new Error('Audio file is empty');
+    const sizeMB = arrayBuffer.byteLength / (1024 * 1024);
+    console.log(`Decoding ${sizeMB.toFixed(1)}MB audio file...`);
+
+    // Decode audio
+    try {
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
+      console.log('✅ Decoded:', {
+        duration: audioBuffer.duration,
+        channels: audioBuffer.numberOfChannels,
+        sampleRate: audioBuffer.sampleRate
+      });
+      return audioBuffer;
+    } catch (decodeError: any) {
+      console.error('Decode failed:', decodeError);
+      throw new Error(`Failed to decode audio: ${decodeError?.message || 'Unknown error'}`);
+    }
+  }
+
+  private async getOrLoadBuffer(sound: Sound): Promise<AudioBuffer> {
+    // Check if already cached
+    if (this.audioBuffers.has(sound.id)) {
+      console.log(`🎵 Using cached buffer for: ${sound.name}`);
+      this.updateCacheAccess(sound.id);
+      return this.audioBuffers.get(sound.id)!;
+    }
+
+    // Check if already loading
+    if (this.loadingPromises.has(sound.id)) {
+      console.log(`⏳ Waiting for ongoing load: ${sound.name}`);
+      return this.loadingPromises.get(sound.id)!;
+    }
+
+    // Start loading
+    console.log(`📥 Loading on-demand: ${sound.name}`);
+    const loadPromise = this.decodeAudioFile(sound.filePath)
+      .then(buffer => {
+        // Add to cache
+        this.audioBuffers.set(sound.id, buffer);
+        this.updateCacheAccess(sound.id);
+        this.evictOldCacheEntries();
+        this.loadingPromises.delete(sound.id);
+        return buffer;
+      })
+      .catch(error => {
+        this.loadingPromises.delete(sound.id);
+        throw error;
+      });
+
+    this.loadingPromises.set(sound.id, loadPromise);
+    return loadPromise;
+  }
+
+  private updateCacheAccess(soundId: string): void {
+    // Remove from current position
+    const index = this.cacheAccessOrder.indexOf(soundId);
+    if (index > -1) {
+      this.cacheAccessOrder.splice(index, 1);
+    }
+    // Add to end (most recent)
+    this.cacheAccessOrder.push(soundId);
+  }
+
+  private evictOldCacheEntries(): void {
+    while (this.audioBuffers.size > this.maxCachedBuffers) {
+      const oldestId = this.cacheAccessOrder.shift();
+      if (oldestId) {
+        console.log(`🗑️ Evicting cached buffer: ${oldestId}`);
+        this.audioBuffers.delete(oldestId);
       }
-
-      // Warn about large files
-      const sizeMB = arrayBuffer.byteLength / (1024 * 1024);
-      if (sizeMB > 50) {
-        console.warn(`⚠️ Large audio file (${sizeMB.toFixed(1)}MB) - this may take a while to decode`);
-      }
-
-      console.log('Decoding audio data...');
-
-      // Use promise-based decodeAudioData with proper error handling
-      let audioBuffer: AudioBuffer;
-      try {
-        // Try the promise-based version first (more reliable in Chromium)
-        audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
-        console.log('Decode successful!', {
-          duration: audioBuffer.duration,
-          channels: audioBuffer.numberOfChannels,
-          sampleRate: audioBuffer.sampleRate
-        });
-      } catch (decodeError: any) {
-        console.error('Promise-based decode failed:', decodeError);
-        console.log('Trying callback-based decode...');
-
-        // Fallback to callback-based version
-        audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Audio decoding timeout after 60 seconds'));
-          }, 60000);
-
-          this.audioContext.decodeAudioData(
-            arrayBuffer.slice(0),
-            (buffer) => {
-              clearTimeout(timeoutId);
-              console.log('Callback decode successful!');
-              resolve(buffer);
-            },
-            (error) => {
-              clearTimeout(timeoutId);
-              console.error('Callback decode error:', error);
-              reject(new Error(`Failed to decode audio: ${error?.message || decodeError?.message || 'Unknown error'}`));
-            }
-          );
-        });
-      }
-
-      this.audioBuffers.set(sound.id, audioBuffer);
-      console.log(`✅ Successfully loaded sound: ${sound.name}`);
-    } catch (error) {
-      console.error(`❌ Failed to load sound ${sound.name}:`, error);
-      throw error;
     }
   }
 
   public async playSound(sound: Sound, velocity: number = 127): Promise<string> {
-    const buffer = this.audioBuffers.get(sound.id);
-    if (!buffer) {
-      throw new Error(`Sound ${sound.name} not loaded`);
-    }
+    // Load buffer on-demand if not cached
+    const buffer = await this.getOrLoadBuffer(sound);
 
     const playingId = `${sound.id}-${Date.now()}`;
     const source = this.audioContext.createBufferSource();
@@ -275,14 +298,30 @@ export class AudioEngine {
   public unloadSound(soundId: string): void {
     // Stop all instances of this sound
     this.stopSoundsBySoundId(soundId);
-    // Remove buffer
+    // Remove buffer from cache
     this.audioBuffers.delete(soundId);
+    // Remove from cache access order
+    const index = this.cacheAccessOrder.indexOf(soundId);
+    if (index > -1) {
+      this.cacheAccessOrder.splice(index, 1);
+    }
+    console.log(`🗑️ Unloaded sound: ${soundId}`);
   }
 
   public destroy(): void {
     this.stopAllSounds();
+    console.log(`Clearing ${this.audioBuffers.size} cached audio buffers`);
     this.audioBuffers.clear();
+    this.cacheAccessOrder = [];
+    this.loadingPromises.clear();
     this.outputNodes.clear();
     this.audioContext.close();
+  }
+
+  public getCacheStats(): { cached: number; maxCache: number } {
+    return {
+      cached: this.audioBuffers.size,
+      maxCache: this.maxCachedBuffers
+    };
   }
 }
