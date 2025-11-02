@@ -202,16 +202,31 @@ const App: React.FC = () => {
 
   const handleAddSound = async () => {
     try {
+      console.log('📂 Opening file picker...');
       const filePath = await window.electronAPI.selectSoundFile();
+      console.log('📂 Selected file:', filePath);
+
       if (filePath && soundManagerRef.current) {
         const fileName = filePath.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '') || 'Untitled';
+        console.log('➕ Adding sound:', fileName);
+
         const sound = await soundManagerRef.current.addSound(filePath, fileName);
+        console.log('✅ Sound added to manager:', sound.id);
+
         dispatch(addSound(sound));
+        console.log('✅ Sound added to Redux store');
+
         dispatch(setDirty(true));
+        console.log('✅ All done!');
       }
-    } catch (error) {
-      console.error('Failed to add sound:', error);
-      alert(`Failed to add sound: ${error}`);
+    } catch (error: any) {
+      console.error('❌ Failed to add sound:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+      alert(`Failed to add sound: ${error?.message || error}`);
     }
   };
 

@@ -41,14 +41,37 @@ export class AudioEngine {
 
       // Use IPC to read the file from the main process
       const arrayBuffer = await window.electronAPI.readAudioFile(sound.filePath);
+      console.log('Audio file read, size:', arrayBuffer.byteLength, 'bytes');
 
-      console.log('Audio file read, decoding...');
-      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error('Audio file is empty');
+      }
+
+      console.log('Decoding audio data...');
+
+      // Use the callback-based version for better error handling
+      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+        this.audioContext.decodeAudioData(
+          arrayBuffer,
+          (buffer) => {
+            console.log('Decode successful!', {
+              duration: buffer.duration,
+              channels: buffer.numberOfChannels,
+              sampleRate: buffer.sampleRate
+            });
+            resolve(buffer);
+          },
+          (error) => {
+            console.error('Decode error:', error);
+            reject(new Error(`Failed to decode audio: ${error?.message || 'Unknown error'}`));
+          }
+        );
+      });
 
       this.audioBuffers.set(sound.id, audioBuffer);
-      console.log(`Successfully loaded sound: ${sound.name}`);
+      console.log(`✅ Successfully loaded sound: ${sound.name}`);
     } catch (error) {
-      console.error(`Failed to load sound ${sound.name}:`, error);
+      console.error(`❌ Failed to load sound ${sound.name}:`, error);
       throw error;
     }
   }

@@ -170,10 +170,18 @@ function setupIpcHandlers() {
   // Audio file reading
   ipcMain.handle('read-audio-file', async (event, filePath: string) => {
     try {
+      console.log('Main process: Reading audio file:', filePath);
       const buffer = await fs.readFile(filePath);
-      return buffer.buffer;
+      console.log('Main process: File read successfully, size:', buffer.length, 'bytes');
+
+      // Convert Node.js Buffer to ArrayBuffer
+      // Using buffer.buffer directly can have issues with slicing, so create a copy
+      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      console.log('Main process: Returning ArrayBuffer, size:', arrayBuffer.byteLength);
+
+      return arrayBuffer;
     } catch (error) {
-      console.error('Failed to read audio file:', error);
+      console.error('Main process: Failed to read audio file:', error);
       throw error;
     }
   });
