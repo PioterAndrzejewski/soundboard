@@ -26,38 +26,26 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
   const [audioDuration, setAudioDuration] = useState(duration);
 
-  // Load audio file and generate real waveform
+  // Load audio file and generate real waveform using pure JavaScript
   useEffect(() => {
     const loadAudio = async () => {
       try {
         console.log("Loading audio for:", filePath);
 
-        // Read the audio file as ArrayBuffer using Electron IPC
-        const buffer = await window.electronAPI.readAudioFile(filePath);
-        console.log(
-          "File loaded via IPC, buffer type:",
-          buffer.constructor.name
-        );
+        // Normalize the file path for different platforms
+        const normalizedPath = filePath.replace(/\\/g, "/");
+        const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
+          ? `file:///${normalizedPath}`
+          : `file://${normalizedPath}`;
 
-        // Convert to proper ArrayBuffer if needed
-        let arrayBuffer: ArrayBuffer;
-        if (buffer instanceof ArrayBuffer) {
-          arrayBuffer = buffer;
-        } else {
-          // Handle Node.js Buffer (has .buffer property)
-          // TypeScript doesn't recognize Node.js Buffer in renderer, so we use 'any'
-          const buf: any = buffer;
-          if (buf && typeof buf === 'object' && buf.buffer instanceof ArrayBuffer) {
-            arrayBuffer = buf.buffer.slice(
-              buf.byteOffset,
-              buf.byteOffset + buf.byteLength
-            );
-          } else {
-            throw new Error("Invalid buffer type received");
-          }
+        // Fetch the audio file as ArrayBuffer directly using fetch
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch audio file: ${response.statusText}`);
         }
 
-        console.log("ArrayBuffer size:", arrayBuffer.byteLength);
+        const arrayBuffer = await response.arrayBuffer();
+        console.log("ArrayBuffer loaded, size:", arrayBuffer.byteLength);
 
         // Decode audio using Web Audio API
         const audioContext = new AudioContext();
