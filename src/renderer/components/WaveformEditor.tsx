@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from "react";
 
 interface WaveformEditorProps {
   filePath: string;
@@ -19,7 +19,9 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [waveformData, setWaveformData] = useState<Array<{ min: number; max: number }>>([]);
+  const [waveformData, setWaveformData] = useState<
+    Array<{ min: number; max: number }>
+  >([]);
   const [isDraggingStart, setIsDraggingStart] = useState(false);
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
   const [audioDuration, setAudioDuration] = useState(duration);
@@ -28,32 +30,45 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   useEffect(() => {
     const loadAudio = async () => {
       try {
-        console.log('Loading audio for:', filePath);
+        console.log("Loading audio for:", filePath);
 
         // Read the audio file as ArrayBuffer using Electron IPC
         const buffer = await window.electronAPI.readAudioFile(filePath);
-        console.log('File loaded via IPC, buffer type:', buffer.constructor.name);
+        console.log(
+          "File loaded via IPC, buffer type:",
+          buffer.constructor.name
+        );
 
         // Convert to proper ArrayBuffer if needed
         let arrayBuffer: ArrayBuffer;
         if (buffer instanceof ArrayBuffer) {
           arrayBuffer = buffer;
-        } else if ('buffer' in buffer && buffer.buffer instanceof ArrayBuffer) {
-          // Handle Node.js Buffer (has .buffer property)
-          const buf = buffer as any;
-          arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
         } else {
-          throw new Error('Invalid buffer type received');
+          // Handle Node.js Buffer (has .buffer property)
+          // TypeScript doesn't recognize Node.js Buffer in renderer, so we use 'any'
+          const buf: any = buffer;
+          if (buf && typeof buf === 'object' && buf.buffer instanceof ArrayBuffer) {
+            arrayBuffer = buf.buffer.slice(
+              buf.byteOffset,
+              buf.byteOffset + buf.byteLength
+            );
+          } else {
+            throw new Error("Invalid buffer type received");
+          }
         }
 
-        console.log('ArrayBuffer size:', arrayBuffer.byteLength);
+        console.log("ArrayBuffer size:", arrayBuffer.byteLength);
 
         // Decode audio using Web Audio API
         const audioContext = new AudioContext();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
         setAudioDuration(audioBuffer.duration);
-        console.log('Audio decoded, duration:', audioBuffer.duration, 'seconds');
+        console.log(
+          "Audio decoded, duration:",
+          audioBuffer.duration,
+          "seconds"
+        );
 
         // Extract waveform data
         const channelData = audioBuffer.getChannelData(0);
@@ -80,22 +95,28 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
         setWaveformData(peaks);
         audioContext.close();
 
-        console.log('✅ Real waveform generated with', peaks.length, 'data points');
+        console.log(
+          "✅ Real waveform generated with",
+          peaks.length,
+          "data points"
+        );
       } catch (error) {
-        console.error('Failed to load audio:', error);
+        console.error("Failed to load audio:", error);
 
         // Fallback: Load duration with HTML Audio and create placeholder waveform
         try {
           const audio = new Audio();
-          const normalizedPath = filePath.replace(/\\/g, '/');
+          const normalizedPath = filePath.replace(/\\/g, "/");
           const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
             ? `file:///${normalizedPath}`
             : `file://${normalizedPath}`;
           audio.src = fileUrl;
 
           await new Promise<void>((resolve, reject) => {
-            audio.addEventListener('loadedmetadata', () => resolve());
-            audio.addEventListener('error', () => reject(new Error('Failed to load audio')));
+            audio.addEventListener("loadedmetadata", () => resolve());
+            audio.addEventListener("error", () =>
+              reject(new Error("Failed to load audio"))
+            );
           });
 
           setAudioDuration(audio.duration);
@@ -113,9 +134,9 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
           }
           setWaveformData(peaks);
 
-          console.log('⚠️ Using placeholder waveform (real waveform failed)');
+          console.log("⚠️ Using placeholder waveform (real waveform failed)");
         } catch (fallbackError) {
-          console.error('Fallback also failed:', fallbackError);
+          console.error("Fallback also failed:", fallbackError);
         }
       }
     };
@@ -130,7 +151,7 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     const canvas = canvasRef.current;
     if (!canvas || waveformData.length === 0) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const width = canvas.width;
@@ -138,7 +159,7 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     const barWidth = width / waveformData.length;
 
     // Clear canvas
-    ctx.fillStyle = '#1f2937'; // dark-800
+    ctx.fillStyle = "#1f2937"; // dark-800
     ctx.fillRect(0, 0, width, height);
 
     // Calculate marker positions
@@ -152,7 +173,7 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
 
       // Highlight region between start and end
       const isInRegion = x >= startX && x <= endX;
-      ctx.strokeStyle = isInRegion ? '#3b82f6' : '#4b5563'; // blue-500 : gray-600
+      ctx.strokeStyle = isInRegion ? "#3b82f6" : "#4b5563"; // blue-500 : gray-600
       ctx.lineWidth = Math.max(1, barWidth - 1);
 
       // Draw vertical line from min to max
@@ -166,23 +187,23 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     });
 
     // Draw start marker
-    ctx.fillStyle = '#10b981'; // green-500
+    ctx.fillStyle = "#10b981"; // green-500
     ctx.fillRect(startX - 2, 0, 4, height);
-    ctx.fillStyle = '#10b981';
+    ctx.fillStyle = "#10b981";
     ctx.fillRect(startX - 8, 0, 16, 20);
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 10px Arial';
-    ctx.fillText('S', startX - 3, 13);
+    ctx.fillStyle = "white";
+    ctx.font = "bold 10px Arial";
+    ctx.fillText("S", startX - 3, 13);
 
     // Draw end marker (always show, at end if not set)
     const actualEndX = endTime > 0 ? endX : width;
-    ctx.fillStyle = '#ef4444'; // red-500
+    ctx.fillStyle = "#ef4444"; // red-500
     ctx.fillRect(actualEndX - 2, 0, 4, height);
-    ctx.fillStyle = '#ef4444';
+    ctx.fillStyle = "#ef4444";
     ctx.fillRect(actualEndX - 8, 0, 16, 20);
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 10px Arial';
-    ctx.fillText('E', actualEndX - 3, 13);
+    ctx.fillStyle = "white";
+    ctx.font = "bold 10px Arial";
+    ctx.fillText("E", actualEndX - 3, 13);
   }, [waveformData, startTime, endTime, audioDuration]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -214,10 +235,16 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     const time = (x / width) * audioDuration;
 
     if (isDraggingStart) {
-      const newStartTime = Math.max(0, Math.min(time, endTime > 0 ? endTime - 0.1 : audioDuration));
+      const newStartTime = Math.max(
+        0,
+        Math.min(time, endTime > 0 ? endTime - 0.1 : audioDuration)
+      );
       onStartTimeChange(newStartTime);
     } else if (isDraggingEnd) {
-      const newEndTime = Math.max(startTime + 0.1, Math.min(time, audioDuration));
+      const newEndTime = Math.max(
+        startTime + 0.1,
+        Math.min(time, audioDuration)
+      );
       onEndTimeChange(newEndTime);
     }
   };
