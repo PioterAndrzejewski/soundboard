@@ -19,15 +19,19 @@ function createWindow() {
     },
   });
 
-  // Load the index.html from dist (webpack outputs to dist root)
-  mainWindow.loadFile(path.join(__dirname, '..', 'index.html')).catch(() => {
-    // Fallback for development with webpack-dev-server
-    mainWindow?.loadURL('http://localhost:3000');
-  });
+  // Load the app
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
-  // Open DevTools in development
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
+    // Development mode - load from webpack dev server
+    mainWindow.loadURL('http://localhost:3000').catch(err => {
+      console.error('Failed to load dev server, falling back to file:', err);
+      mainWindow?.loadFile(path.join(__dirname, '..', 'index.html'));
+    });
     mainWindow.webContents.openDevTools();
+  } else {
+    // Production mode - load from dist
+    mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
   }
 
   mainWindow.on('closed', () => {
