@@ -62,7 +62,7 @@ const SoundsGrid: React.FC<SoundsGridProps> = ({ sounds, onRemove, soundManager 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={sortedSounds.map(s => s.id)} strategy={rectSortingStrategy}>
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(max(200px, calc((100% - 7 * 1rem) / 8)), 1fr))' }}>
           {sortedSounds.map(sound => (
             <SoundCard
               key={sound.id}

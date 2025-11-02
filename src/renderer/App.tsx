@@ -7,13 +7,14 @@ import {
   updateSound,
   reorderSounds,
 } from "./store/soundsSlice";
-import { setSettings, setMasterVolume } from "./store/settingsSlice";
+import { setSettings, setMasterVolume, updateSettings } from "./store/settingsSlice";
 import {
   setCurrentProjectPath,
   setDirty,
   triggerStopAll,
   triggerSoundHighlight,
   stopMidiListening,
+  clearMappingTarget,
 } from "./store/uiSlice";
 import { setTabs } from "./store/tabsSlice";
 import { AudioEngine } from "./audioEngine";
@@ -169,6 +170,31 @@ const App: React.FC = () => {
     settings.stopAllMapping,
     dispatch,
   ]);
+
+  // Handle MIDI mapping assignment for Stop All button
+  useEffect(() => {
+    if (!midiHandlerRef.current || !ui.isMidiMappingMode || ui.mappingTarget !== 'stopall') return;
+
+    const handleMidiMessage = (message: any) => {
+      if (message.type === 'noteon') {
+        dispatch(updateSettings({
+          stopAllMapping: {
+            deviceId: message.deviceId,
+            deviceName: message.deviceName,
+            note: message.note,
+            channel: message.channel,
+          },
+        }));
+        dispatch(clearMappingTarget());
+        dispatch(setDirty(true));
+      }
+    };
+
+    midiHandlerRef.current.addListener(handleMidiMessage);
+    return () => {
+      midiHandlerRef.current?.removeListener(handleMidiMessage);
+    };
+  }, [midiHandlerRef.current, ui.isMidiMappingMode, ui.mappingTarget, dispatch]);
 
   // Handle direct MIDI assignment for sounds (when not in modal)
   useEffect(() => {
@@ -416,6 +442,7 @@ const App: React.FC = () => {
         onLoad={handleLoadProject}
         onAddSound={handleAddSound}
         onStopAll={handleStopAll}
+        midiHandler={midiHandlerRef.current}
       />
 
       <div className="flex flex-1 overflow-hidden">

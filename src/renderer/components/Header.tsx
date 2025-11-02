@@ -3,10 +3,9 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   startMappingTarget,
   clearMappingTarget,
-  toggleActiveSoundsPanel,
   toggleMidiMappingMode,
 } from "../store/uiSlice";
-import { updateSettings, setDirty } from '../store/settingsSlice';
+import { updateSettings, setDirty } from "../store/settingsSlice";
 
 interface HeaderProps {
   projectPath: string | null;
@@ -17,7 +16,7 @@ interface HeaderProps {
   onLoad: () => void;
   onAddSound: () => void;
   onStopAll: () => void;
-  midiHandler: any;
+  midiHandler?: any;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -37,7 +36,9 @@ const Header: React.FC<HeaderProps> = ({
     : "Untitled";
   const [stopAllFlash, setStopAllFlash] = useState(false);
   const [showMidiDevices, setShowMidiDevices] = useState(false);
-  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<
+    MediaDeviceInfo[]
+  >([]);
   const [midiDevices, setMidiDevices] = useState<any[]>([]);
   const ui = useAppSelector((state) => state.ui);
   const settings = useAppSelector((state) => state.settings);
@@ -54,10 +55,10 @@ const Header: React.FC<HeaderProps> = ({
     const enumerateAudioDevices = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+        const audioOutputs = devices.filter((d) => d.kind === "audiooutput");
         setAudioOutputDevices(audioOutputs);
       } catch (error) {
-        console.error('Failed to enumerate audio devices:', error);
+        console.error("Failed to enumerate audio devices:", error);
       }
     };
 
@@ -97,40 +98,22 @@ const Header: React.FC<HeaderProps> = ({
           {projectName}
           {isDirty && " *"}
         </span>
-      </div>
 
-      <div className="flex gap-2">
+        <div className="w-px bg-dark-500 h-6"></div>
+
+        {/* MIDI Mapping Mode Toggle */}
         <button
-          onClick={onNew}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
+          onClick={() => dispatch(toggleMidiMappingMode())}
+          className={`px-4 py-1.5 rounded text-sm font-medium transition-all ${
+            ui.isMidiMappingMode
+              ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
+              : "bg-dark-500 hover:bg-dark-400"
+          }`}
+          title={ui.isMidiMappingMode ? "Exit MIDI mapping mode" : "Enter MIDI mapping mode"}
         >
-          New
+          {ui.isMidiMappingMode ? "🎹 Mapping Mode: ON" : "🎹 MIDI Mapping"}
         </button>
-        <button
-          onClick={onLoad}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
-        >
-          Open
-        </button>
-        <button
-          onClick={onSave}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
-        >
-          Save
-        </button>
-        <button
-          onClick={onSaveAs}
-          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
-        >
-          Save As
-        </button>
-        <div className="w-px bg-dark-500 mx-2"></div>
-        <button
-          onClick={onAddSound}
-          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
-        >
-          Add Sound
-        </button>
+
         <div
           className={`relative rounded transition-all ${
             ui.isMidiMappingMode
@@ -174,6 +157,115 @@ const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onNew}
+          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
+        >
+          New
+        </button>
+        <button
+          onClick={onLoad}
+          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
+        >
+          Open
+        </button>
+        <button
+          onClick={onSave}
+          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
+        >
+          Save
+        </button>
+        <button
+          onClick={onSaveAs}
+          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
+        >
+          Save As
+        </button>
+        <div className="w-px bg-dark-500 mx-2"></div>
+
+        {/* Audio Output Selector */}
+        <div className="relative">
+          <select
+            value={settings.defaultOutputDeviceId || "default"}
+            onChange={(e) => {
+              dispatch(updateSettings({ defaultOutputDeviceId: e.target.value === "default" ? undefined : e.target.value }));
+              dispatch(setDirty(true));
+            }}
+            className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors cursor-pointer appearance-none pr-8"
+            title="Select audio output device"
+          >
+            <option value="default">🔊 Default Output</option>
+            {audioOutputDevices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                🔊 {device.label || `Device ${device.deviceId.substring(0, 8)}`}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* MIDI Devices Button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowMidiDevices(!showMidiDevices)}
+            className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors flex items-center gap-1"
+            title="Show MIDI devices"
+          >
+            🎛️ MIDI Devices
+            {midiDevices.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-green-600 rounded-full text-xs">
+                {midiDevices.length}
+              </span>
+            )}
+          </button>
+
+          {showMidiDevices && (
+            <div className="absolute top-full right-0 mt-2 w-80 bg-dark-600 border-2 border-dark-500 rounded-lg shadow-xl z-50">
+              <div className="p-4 border-b border-dark-500 flex items-center justify-between">
+                <h3 className="font-semibold">Connected MIDI Devices</h3>
+                <button
+                  onClick={() => setShowMidiDevices(false)}
+                  className="text-dark-300 hover:text-dark-100 text-xl"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-4 max-h-96 overflow-y-auto">
+                {midiDevices.length === 0 ? (
+                  <div className="text-dark-300 text-sm italic text-center py-4">
+                    No MIDI devices connected
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {midiDevices.map((device) => (
+                      <div
+                        key={device.id}
+                        className="p-3 bg-dark-700 rounded border border-dark-500"
+                      >
+                        <div className="font-medium text-sm">{device.name}</div>
+                        <div className="text-xs text-dark-300 mt-1">
+                          {device.manufacturer || "Unknown manufacturer"}
+                        </div>
+                        <div className="text-xs text-dark-400 mt-1">
+                          ID: {device.id}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onAddSound}
+          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
+        >
+          Add Sound
+        </button>
       </div>
     </header>
   );
