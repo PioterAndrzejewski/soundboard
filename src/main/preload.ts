@@ -1,52 +1,47 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IpcChannel, Sound, AppSettings, Project } from '../shared/types';
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-console.log('Preload script is running');
+// Use string literals instead of importing types to avoid module resolution issues in sandbox
 contextBridge.exposeInMainWorld('electronAPI', {
   // Sound management
   addSound: (filePath: string, name: string) =>
-    ipcRenderer.invoke(IpcChannel.ADD_SOUND, filePath, name),
+    ipcRenderer.invoke('add-sound', filePath, name),
 
   removeSound: (soundId: string) =>
-    ipcRenderer.invoke(IpcChannel.REMOVE_SOUND, soundId),
+    ipcRenderer.invoke('remove-sound', soundId),
 
-  updateSound: (soundId: string, updates: Partial<Sound>) =>
-    ipcRenderer.invoke(IpcChannel.UPDATE_SOUND, soundId, updates),
+  updateSound: (soundId: string, updates: any) =>
+    ipcRenderer.invoke('update-sound', soundId, updates),
 
-  getSounds: (): Promise<Sound[]> =>
-    ipcRenderer.invoke(IpcChannel.GET_SOUNDS),
+  getSounds: () =>
+    ipcRenderer.invoke('get-sounds'),
 
   // Settings
-  getSettings: (): Promise<AppSettings> =>
-    ipcRenderer.invoke(IpcChannel.GET_SETTINGS),
+  getSettings: () =>
+    ipcRenderer.invoke('get-settings'),
 
-  updateSettings: (settings: Partial<AppSettings>) =>
-    ipcRenderer.invoke(IpcChannel.UPDATE_SETTINGS, settings),
+  updateSettings: (settings: any) =>
+    ipcRenderer.invoke('update-settings', settings),
 
   // File selection
-  selectSoundFile: (): Promise<string | null> =>
-    ipcRenderer.invoke(IpcChannel.SELECT_SOUND_FILE),
+  selectSoundFile: () =>
+    ipcRenderer.invoke('select-sound-file'),
 
   // Project management
-  newProject: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannel.NEW_PROJECT),
+  newProject: () =>
+    ipcRenderer.invoke('new-project'),
 
-  saveProject: (project: Project, filePath?: string): Promise<string> =>
-    ipcRenderer.invoke(IpcChannel.SAVE_PROJECT, project, filePath),
+  saveProject: (project: any, filePath?: string) =>
+    ipcRenderer.invoke('save-project', project, filePath),
 
-  saveProjectAs: (project: Project): Promise<string> =>
-    ipcRenderer.invoke(IpcChannel.SAVE_PROJECT_AS, project),
+  saveProjectAs: (project: any) =>
+    ipcRenderer.invoke('save-project-as', project),
 
-  loadProject: (): Promise<{ project: Project; filePath: string } | null> =>
-    ipcRenderer.invoke(IpcChannel.LOAD_PROJECT),
+  loadProject: () =>
+    ipcRenderer.invoke('load-project'),
 
-  getRecentProjects: (): Promise<string[]> =>
-    ipcRenderer.invoke(IpcChannel.GET_RECENT_PROJECTS),
+  getRecentProjects: () =>
+    ipcRenderer.invoke('get-recent-projects'),
 });
-
-console.log('electronAPI exposed to window');
 
 // Type declaration for the exposed API
 declare global {
@@ -54,15 +49,15 @@ declare global {
     electronAPI: {
       addSound: (filePath: string, name: string) => Promise<any>;
       removeSound: (soundId: string) => Promise<any>;
-      updateSound: (soundId: string, updates: Partial<Sound>) => Promise<any>;
-      getSounds: () => Promise<Sound[]>;
-      getSettings: () => Promise<AppSettings>;
-      updateSettings: (settings: Partial<AppSettings>) => Promise<any>;
+      updateSound: (soundId: string, updates: any) => Promise<any>;
+      getSounds: () => Promise<any[]>;
+      getSettings: () => Promise<any>;
+      updateSettings: (settings: any) => Promise<any>;
       selectSoundFile: () => Promise<string | null>;
       newProject: () => Promise<void>;
-      saveProject: (project: Project, filePath?: string) => Promise<string>;
-      saveProjectAs: (project: Project) => Promise<string>;
-      loadProject: () => Promise<{ project: Project; filePath: string } | null>;
+      saveProject: (project: any, filePath?: string) => Promise<string>;
+      saveProjectAs: (project: any) => Promise<string>;
+      loadProject: () => Promise<{ project: any; filePath: string } | null>;
       getRecentProjects: () => Promise<string[]>;
     };
   }

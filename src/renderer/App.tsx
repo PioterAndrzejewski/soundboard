@@ -24,10 +24,6 @@ const App: React.FC = () => {
 
   // Initialize engines
   useEffect(() => {
-    // Check if electronAPI is available
-    console.log('window.electronAPI:', window.electronAPI);
-    console.log('window.electronAPI.saveProjectAs:', window.electronAPI?.saveProjectAs);
-
     const initEngines = async () => {
       try {
         audioEngineRef.current = new AudioEngine();
