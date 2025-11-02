@@ -10,6 +10,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import SoundsGrid from './components/SoundsGrid';
 import SoundSettingsModal from './components/SoundSettingsModal';
+import MidiListeningOverlay from './components/MidiListeningOverlay';
 import { Project } from '../shared/types';
 
 const App: React.FC = () => {
@@ -209,6 +210,14 @@ const App: React.FC = () => {
       <SoundSettingsModal
         soundManager={soundManagerRef.current}
         midiHandler={midiHandlerRef.current}
+      />
+
+      <MidiListeningOverlay
+        assignmentTarget={
+          ui.selectedSoundId
+            ? sounds.find(s => s.id === ui.selectedSoundId)?.name
+            : undefined
+        }
       />
     </div>
   );

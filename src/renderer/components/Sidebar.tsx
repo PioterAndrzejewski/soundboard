@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setMasterVolume } from '../store/settingsSlice';
+import { setMasterVolume, updateSettings } from '../store/settingsSlice';
 import { startMidiListening, stopMidiListening, setDirty } from '../store/uiSlice';
 import { MidiHandler } from '../midiHandler';
 import { SoundManager } from '../soundManager';
@@ -28,29 +28,25 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
 
     const handleMidiMessage = (message: MidiMessage) => {
       if (ui.listeningMode === 'volume' && message.type === 'cc') {
-        const newSettings = {
-          ...settings,
+        dispatch(updateSettings({
           volumeMapping: {
             deviceId: message.deviceId,
             deviceName: message.deviceName,
             ccNumber: message.ccNumber!,
             channel: message.channel,
           },
-        };
-        soundManager?.updateSettings(newSettings);
+        }));
         dispatch(stopMidiListening());
         dispatch(setDirty(true));
       } else if (ui.listeningMode === 'stopall' && message.type === 'noteon') {
-        const newSettings = {
-          ...settings,
+        dispatch(updateSettings({
           stopAllMapping: {
             deviceId: message.deviceId,
             deviceName: message.deviceName,
             note: message.note!,
             channel: message.channel,
           },
-        };
-        soundManager?.updateSettings(newSettings);
+        }));
         dispatch(stopMidiListening());
         dispatch(setDirty(true));
       }
@@ -65,7 +61,6 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const volume = parseInt(e.target.value) / 100;
     dispatch(setMasterVolume(volume));
-    soundManager?.setMasterVolume(volume);
     dispatch(setDirty(true));
   };
 
@@ -130,15 +125,6 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
           )}
         </div>
       </section>
-
-      {ui.isMidiListening && (
-        <div className="p-3 bg-blue-900 border border-blue-700 rounded text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-            <span>Listening for MIDI input...</span>
-          </div>
-        </div>
-      )}
     </aside>
   );
 };

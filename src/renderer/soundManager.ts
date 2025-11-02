@@ -13,7 +13,8 @@ export class SoundManager {
   constructor(audioEngine: AudioEngine, midiHandler: MidiHandler, settings: AppSettings) {
     this.audioEngine = audioEngine;
     this.midiHandler = midiHandler;
-    this.settings = settings;
+    // Create a copy of settings to avoid mutating Redux state
+    this.settings = { ...settings };
 
     // Set initial master volume
     this.audioEngine.setMasterVolume(settings.masterVolume);
