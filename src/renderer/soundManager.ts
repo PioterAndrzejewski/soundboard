@@ -115,8 +115,9 @@ export class SoundManager {
   public updateSound(soundId: string, updates: Partial<Sound>): void {
     const sound = this.sounds.get(soundId);
     if (sound) {
-      Object.assign(sound, updates);
-      this.sounds.set(soundId, sound);
+      // Create a new object to avoid mutating Redux state
+      const updatedSound = { ...sound, ...updates };
+      this.sounds.set(soundId, updatedSound);
     }
   }
 
