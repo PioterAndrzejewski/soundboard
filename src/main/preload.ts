@@ -47,6 +47,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('read-audio-file', filePath),
 });
 
+// Expose audioIO for WaveformEditor
+contextBridge.exposeInMainWorld('audioIO', {
+  readFile: (filePath: string) =>
+    ipcRenderer.invoke('read-audio-file', filePath),
+});
+
 // Type declaration for the exposed API
 declare global {
   interface Window {
@@ -64,6 +70,9 @@ declare global {
       loadProject: () => Promise<{ project: any; filePath: string } | null>;
       getRecentProjects: () => Promise<string[]>;
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
+    };
+    audioIO: {
+      readFile: (filePath: string) => Promise<ArrayBuffer>;
     };
   }
 }
