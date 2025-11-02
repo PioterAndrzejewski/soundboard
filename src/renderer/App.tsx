@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store/hooks';
 import { setSounds, addSound, removeSound, updateSound, reorderSounds } from './store/soundsSlice';
 import { setSettings, setMasterVolume } from './store/settingsSlice';
-import { setCurrentProjectPath, setDirty } from './store/uiSlice';
+import { setCurrentProjectPath, setDirty, triggerStopAll } from './store/uiSlice';
 import { AudioEngine } from './audioEngine';
 import { MidiHandler } from './midiHandler';
 import { SoundManager } from './soundManager';
@@ -56,6 +56,43 @@ const App: React.FC = () => {
       soundManagerRef.current.updateSettings(settings);
     }
   }, [settings]);
+
+  // Handle MIDI messages for volume and stop-all controls
+  useEffect(() => {
+    if (!midiHandlerRef.current) return;
+
+    const handleMidiMessage = (message: any) => {
+      // Handle volume mapping
+      if (message.type === 'cc' && settings.volumeMapping) {
+        const vm = settings.volumeMapping;
+        if (
+          message.deviceId === vm.deviceId &&
+          message.ccNumber === vm.ccNumber &&
+          message.channel === vm.channel
+        ) {
+          const volume = message.value / 127;
+          dispatch(setMasterVolume(volume));
+        }
+      }
+
+      // Handle stop all mapping
+      if (message.type === 'noteon' && settings.stopAllMapping) {
+        const sam = settings.stopAllMapping;
+        if (
+          message.deviceId === sam.deviceId &&
+          message.note === sam.note &&
+          message.channel === sam.channel
+        ) {
+          handleStopAll();
+        }
+      }
+    };
+
+    midiHandlerRef.current.addListener(handleMidiMessage);
+    return () => {
+      midiHandlerRef.current?.removeListener(handleMidiMessage);
+    };
+  }, [midiHandlerRef.current, settings.volumeMapping, settings.stopAllMapping, dispatch]);
 
   // Handle project operations
   const handleNewProject = async () => {
@@ -176,6 +213,7 @@ const App: React.FC = () => {
   const handleStopAll = () => {
     if (soundManagerRef.current) {
       soundManagerRef.current.stopAllSounds();
+      dispatch(triggerStopAll());
     }
   };
 

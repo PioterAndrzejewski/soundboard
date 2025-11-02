@@ -1,13 +1,18 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { UIState } from '../../shared/types';
 
-const initialState: UIState = {
+interface ExtendedUIState extends UIState {
+  lastStopAllTrigger: number;
+}
+
+const initialState: ExtendedUIState = {
   selectedSoundId: null,
   isSettingsModalOpen: false,
   isMidiListening: false,
   listeningMode: 'none',
   currentProjectPath: null,
   isDirty: false,
+  lastStopAllTrigger: 0,
 };
 
 const uiSlice = createSlice({
@@ -38,6 +43,9 @@ const uiSlice = createSlice({
     setDirty: (state, action: PayloadAction<boolean>) => {
       state.isDirty = action.payload;
     },
+    triggerStopAll: (state) => {
+      state.lastStopAllTrigger = Date.now();
+    },
   },
 });
 
@@ -49,5 +57,6 @@ export const {
   stopMidiListening,
   setCurrentProjectPath,
   setDirty,
+  triggerStopAll,
 } = uiSlice.actions;
 export default uiSlice.reducer;

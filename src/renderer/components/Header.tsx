@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAppSelector } from '../store/hooks';
 
 interface HeaderProps {
   projectPath: string | null;
@@ -22,6 +23,17 @@ const Header: React.FC<HeaderProps> = ({
   onStopAll,
 }) => {
   const projectName = projectPath ? projectPath.split(/[\\/]/).pop() : 'Untitled';
+  const [stopAllFlash, setStopAllFlash] = useState(false);
+  const ui = useAppSelector(state => state.ui);
+
+  // Watch for Stop All trigger (from button or MIDI)
+  useEffect(() => {
+    if (ui.lastStopAllTrigger > 0) {
+      setStopAllFlash(true);
+      const timer = setTimeout(() => setStopAllFlash(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [ui.lastStopAllTrigger]);
 
   return (
     <header className="bg-dark-600 border-b-2 border-dark-500 px-6 py-3 flex items-center justify-between">
@@ -49,7 +61,14 @@ const Header: React.FC<HeaderProps> = ({
         <button onClick={onAddSound} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors">
           Add Sound
         </button>
-        <button onClick={onStopAll} className="px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded text-sm font-medium transition-colors">
+        <button
+          onClick={onStopAll}
+          className={`px-4 py-1.5 rounded text-sm font-medium transition-all ${
+            stopAllFlash
+              ? 'bg-red-400 ring-2 ring-red-300 scale-105'
+              : 'bg-red-600 hover:bg-red-500'
+          }`}
+        >
           Stop All
         </button>
       </div>

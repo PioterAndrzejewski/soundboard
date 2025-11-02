@@ -16,12 +16,24 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
   const settings = useAppSelector(state => state.settings);
   const ui = useAppSelector(state => state.ui);
   const [midiDevices, setMidiDevices] = useState<any[]>([]);
+  const [volumeFlash, setVolumeFlash] = useState(false);
+  const [prevVolume, setPrevVolume] = useState(settings.masterVolume);
 
   useEffect(() => {
     if (midiHandler) {
       setMidiDevices(midiHandler.getDevices());
     }
   }, [midiHandler]);
+
+  // Detect volume changes from MIDI and trigger flash
+  useEffect(() => {
+    if (settings.masterVolume !== prevVolume) {
+      setPrevVolume(settings.masterVolume);
+      setVolumeFlash(true);
+      const timer = setTimeout(() => setVolumeFlash(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [settings.masterVolume, prevVolume]);
 
   useEffect(() => {
     if (!midiHandler || !ui.isMidiListening) return;
@@ -66,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
 
   return (
     <aside className="w-80 bg-dark-700 border-r-2 border-dark-500 p-6 overflow-y-auto">
-      <section className="mb-6">
+      <section className={`mb-6 p-3 rounded transition-all duration-300 ${volumeFlash ? 'bg-blue-900 bg-opacity-30 ring-2 ring-blue-500' : ''}`}>
         <h3 className="text-xs font-semibold text-dark-200 uppercase mb-3">Master Volume</h3>
         <div className="flex items-center gap-2 mb-2">
           <input

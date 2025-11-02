@@ -24,34 +24,8 @@ export class SoundManager {
   }
 
   private handleMidiMessage(message: MidiMessage): void {
-    // Handle volume mapping
-    if (message.type === 'cc' && this.settings.volumeMapping) {
-      const vm = this.settings.volumeMapping;
-      if (
-        message.deviceId === vm.deviceId &&
-        message.ccNumber === vm.ccNumber &&
-        message.channel === vm.channel
-      ) {
-        const volume = message.value / 127;
-        this.setMasterVolume(volume);
-        return;
-      }
-    }
-
-    // Handle stop all mapping
-    if (message.type === 'noteon' && this.settings.stopAllMapping) {
-      const sam = this.settings.stopAllMapping;
-      if (
-        message.deviceId === sam.deviceId &&
-        message.note === sam.note &&
-        message.channel === sam.channel
-      ) {
-        this.stopAllSounds();
-        return;
-      }
-    }
-
-    // Handle sound mappings
+    // Volume and stop-all mappings are handled at the App component level
+    // Only handle sound mappings here
     this.sounds.forEach((sound) => {
       if (!sound.midiMapping) return;
 
