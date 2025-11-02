@@ -2,11 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   startMappingTarget,
-  clearMappingTarget,
   toggleMidiMappingMode,
+  setDirty,
 } from "../store/uiSlice";
 import { updateSettings } from "../store/settingsSlice";
-import { setDirty } from "../store/uiSlice";
 
 interface HeaderProps {
   projectPath: string | null;

@@ -19,7 +19,7 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [waveformData, setWaveformData] = useState<number[]>([]);
+  const [waveformData, setWaveformData] = useState<Array<{ min: number; max: number }>>([]);
   const [isDraggingStart, setIsDraggingStart] = useState(false);
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
   const [audioDuration, setAudioDuration] = useState(duration);
@@ -95,24 +95,28 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     ctx.fillStyle = '#1f2937'; // dark-800
     ctx.fillRect(0, 0, width, height);
 
-    // Normalize waveform data
-    const max = Math.max(...waveformData);
-
     // Calculate marker positions
     const startX = (startTime / audioDuration) * width;
     const endX = endTime > 0 ? (endTime / audioDuration) * width : width;
 
-    // Draw waveform bars
-    waveformData.forEach((value, index) => {
-      const barHeight = (value / max) * height * 0.8;
-      const x = index * barWidth;
-      const y = (height - barHeight) / 2;
+    // Draw waveform using min/max peaks
+    const mid = height / 2;
+    waveformData.forEach((peak, index) => {
+      const x = index * barWidth + 0.5;
 
       // Highlight region between start and end
       const isInRegion = x >= startX && x <= endX;
-      ctx.fillStyle = isInRegion ? '#3b82f6' : '#4b5563'; // blue-500 : gray-600
+      ctx.strokeStyle = isInRegion ? '#3b82f6' : '#4b5563'; // blue-500 : gray-600
+      ctx.lineWidth = Math.max(1, barWidth - 1);
 
-      ctx.fillRect(x, y, barWidth - 1, barHeight);
+      // Draw vertical line from min to max
+      const minY = mid + peak.min * mid;
+      const maxY = mid + peak.max * mid;
+
+      ctx.beginPath();
+      ctx.moveTo(x, minY);
+      ctx.lineTo(x, maxY);
+      ctx.stroke();
     });
 
     // Draw start marker
