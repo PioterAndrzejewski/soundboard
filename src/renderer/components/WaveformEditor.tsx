@@ -24,54 +24,98 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
   const [audioDuration, setAudioDuration] = useState(duration);
 
-  // Load audio file to get duration (no waveform visualization)
+  // Load audio file and generate real waveform
   useEffect(() => {
     const loadAudio = async () => {
       try {
         console.log('Loading audio for:', filePath);
 
-        // Create a simple audio element to get duration
-        const audio = new Audio();
+        // Read the audio file as ArrayBuffer using Electron IPC
+        const buffer = await window.electronAPI.readAudioFile(filePath);
+        console.log('File loaded via IPC, buffer type:', buffer.constructor.name);
 
-        // Normalize file path for file:// URL
-        const normalizedPath = filePath.replace(/\\/g, '/');
-        const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
-          ? `file:///${normalizedPath}`
-          : `file://${normalizedPath}`;
+        // Convert to proper ArrayBuffer if needed
+        let arrayBuffer: ArrayBuffer;
+        if (buffer instanceof ArrayBuffer) {
+          arrayBuffer = buffer;
+        } else if (buffer.buffer instanceof ArrayBuffer) {
+          // Handle Node.js Buffer (has .buffer property)
+          arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+        } else {
+          throw new Error('Invalid buffer type received');
+        }
 
-        audio.src = fileUrl;
+        console.log('ArrayBuffer size:', arrayBuffer.byteLength);
 
-        // Wait for metadata to load
-        await new Promise<void>((resolve, reject) => {
-          audio.addEventListener('loadedmetadata', () => resolve());
-          audio.addEventListener('error', () => reject(new Error('Failed to load audio')));
-        });
+        // Decode audio using Web Audio API
+        const audioContext = new AudioContext();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-        setAudioDuration(audio.duration);
-        console.log('Audio loaded, duration:', audio.duration, 'seconds');
+        setAudioDuration(audioBuffer.duration);
+        console.log('Audio decoded, duration:', audioBuffer.duration, 'seconds');
 
-        // Create a more realistic looking waveform pattern
-        // We'll create a pseudo-random pattern that looks like audio
+        // Extract waveform data
+        const channelData = audioBuffer.getChannelData(0);
+        const samples = audioBuffer.length;
         const buckets = 500;
+        const blockSize = Math.floor(samples / buckets);
         const peaks = [];
 
         for (let i = 0; i < buckets; i++) {
-          // Create varied amplitude using sine waves and pseudo-random values
-          const position = i / buckets;
-          const envelope = Math.sin(position * Math.PI); // Overall envelope
-          const variation = Math.sin(position * 50 + i) * 0.3; // High frequency variation
-          const random = (Math.sin(i * 12.9898) * 43758.5453) % 1; // Pseudo-random
+          const start = i * blockSize;
+          const end = Math.min(start + blockSize, samples);
+          let min = 1;
+          let max = -1;
 
-          const amplitude = (envelope * 0.6 + variation + random * 0.3) * 0.7;
+          for (let j = start; j < end; j++) {
+            const value = channelData[j];
+            if (value < min) min = value;
+            if (value > max) max = value;
+          }
 
-          peaks.push({
-            min: -Math.abs(amplitude),
-            max: Math.abs(amplitude)
-          });
+          peaks.push({ min, max });
         }
+
         setWaveformData(peaks);
+        audioContext.close();
+
+        console.log('✅ Real waveform generated with', peaks.length, 'data points');
       } catch (error) {
         console.error('Failed to load audio:', error);
+
+        // Fallback: Load duration with HTML Audio and create placeholder waveform
+        try {
+          const audio = new Audio();
+          const normalizedPath = filePath.replace(/\\/g, '/');
+          const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
+            ? `file:///${normalizedPath}`
+            : `file://${normalizedPath}`;
+          audio.src = fileUrl;
+
+          await new Promise<void>((resolve, reject) => {
+            audio.addEventListener('loadedmetadata', () => resolve());
+            audio.addEventListener('error', () => reject(new Error('Failed to load audio')));
+          });
+
+          setAudioDuration(audio.duration);
+
+          // Create placeholder waveform
+          const buckets = 500;
+          const peaks = [];
+          for (let i = 0; i < buckets; i++) {
+            const position = i / buckets;
+            const envelope = Math.sin(position * Math.PI);
+            const variation = Math.sin(position * 50 + i) * 0.3;
+            const random = (Math.sin(i * 12.9898) * 43758.5453) % 1;
+            const amplitude = (envelope * 0.6 + variation + random * 0.3) * 0.7;
+            peaks.push({ min: -Math.abs(amplitude), max: Math.abs(amplitude) });
+          }
+          setWaveformData(peaks);
+
+          console.log('⚠️ Using placeholder waveform (real waveform failed)');
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
+        }
       }
     };
 
