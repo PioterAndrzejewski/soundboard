@@ -5,7 +5,8 @@ import {
   clearMappingTarget,
   toggleMidiMappingMode,
 } from "../store/uiSlice";
-import { updateSettings, setDirty } from "../store/settingsSlice";
+import { updateSettings } from "../store/settingsSlice";
+import { setDirty } from "../store/uiSlice";
 
 interface HeaderProps {
   projectPath: string | null;
@@ -109,7 +110,11 @@ const Header: React.FC<HeaderProps> = ({
               ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
               : "bg-dark-500 hover:bg-dark-400"
           }`}
-          title={ui.isMidiMappingMode ? "Exit MIDI mapping mode" : "Enter MIDI mapping mode"}
+          title={
+            ui.isMidiMappingMode
+              ? "Exit MIDI mapping mode"
+              : "Enter MIDI mapping mode"
+          }
         >
           {ui.isMidiMappingMode ? "🎹 Mapping Mode: ON" : "🎹 MIDI Mapping"}
         </button>
@@ -191,7 +196,12 @@ const Header: React.FC<HeaderProps> = ({
           <select
             value={settings.defaultOutputDeviceId || "default"}
             onChange={(e) => {
-              dispatch(updateSettings({ defaultOutputDeviceId: e.target.value === "default" ? undefined : e.target.value }));
+              dispatch(
+                updateSettings({
+                  defaultOutputDeviceId:
+                    e.target.value === "default" ? undefined : e.target.value,
+                })
+              );
               dispatch(setDirty(true));
             }}
             className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors cursor-pointer appearance-none pr-8"

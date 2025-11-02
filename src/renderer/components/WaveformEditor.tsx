@@ -28,38 +28,46 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   useEffect(() => {
     const loadWaveform = async () => {
       try {
-        // Normalize file path for file:// URL
-        const normalizedPath = filePath.replace(/\\/g, '/');
-        const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
-          ? `file:///${normalizedPath}`
-          : `file://${normalizedPath}`;
+        console.log('Loading waveform for:', filePath);
 
-        // Fetch audio file
-        const response = await fetch(fileUrl);
-        const arrayBuffer = await response.arrayBuffer();
+        // Use Electron IPC to read the audio file
+        const arrayBuffer = await window.electronAPI.readAudioFile(filePath);
+        console.log('File loaded, size:', arrayBuffer.byteLength, 'bytes');
 
         // Create audio context and decode
         const audioContext = new AudioContext();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        console.log('Audio decoded, duration:', audioBuffer.duration, 'seconds');
 
         setAudioDuration(audioBuffer.duration);
 
-        // Get waveform data from the first channel
-        const rawData = audioBuffer.getChannelData(0);
-        const samples = 500; // Number of samples for waveform
-        const blockSize = Math.floor(rawData.length / samples);
-        const filteredData = [];
+        // Merge to mono if stereo
+        const ch0 = audioBuffer.getChannelData(0);
+        const ch1 = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
 
-        for (let i = 0; i < samples; i++) {
-          const blockStart = blockSize * i;
-          let sum = 0;
-          for (let j = 0; j < blockSize; j++) {
-            sum += Math.abs(rawData[blockStart + j]);
-          }
-          filteredData.push(sum / blockSize);
+        const samples = new Float32Array(ch0.length);
+        for (let i = 0; i < ch0.length; i++) {
+          samples[i] = ch1 ? (ch0[i] + ch1[i]) / 2 : ch0[i];
         }
 
-        setWaveformData(filteredData);
+        // Downsample to canvas width using min/max per bucket (gives nice "peaks")
+        const buckets = 500; // Number of buckets for waveform
+        const blockSize = Math.floor(samples.length / buckets);
+        const peaks = [];
+
+        for (let i = 0; i < buckets; i++) {
+          const start = i * blockSize;
+          const end = Math.min(start + blockSize, samples.length);
+          let min = 1, max = -1;
+          for (let j = start; j < end; j++) {
+            const s = samples[j];
+            if (s < min) min = s;
+            if (s > max) max = s;
+          }
+          peaks.push({ min, max });
+        }
+
+        setWaveformData(peaks);
         audioContext.close();
       } catch (error) {
         console.error('Failed to load waveform:', error);
