@@ -87,33 +87,49 @@ export class AudioEngine {
         throw new Error('Audio file is empty');
       }
 
+      // Warn about large files
+      const sizeMB = arrayBuffer.byteLength / (1024 * 1024);
+      if (sizeMB > 50) {
+        console.warn(`⚠️ Large audio file (${sizeMB.toFixed(1)}MB) - this may take a while to decode`);
+      }
+
       console.log('Decoding audio data...');
 
-      // Use the callback-based version for better error handling
-      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
-        // Set a timeout in case decode hangs
-        const timeoutId = setTimeout(() => {
-          reject(new Error('Audio decoding timeout after 30 seconds'));
-        }, 30000);
+      // Use promise-based decodeAudioData with proper error handling
+      let audioBuffer: AudioBuffer;
+      try {
+        // Try the promise-based version first (more reliable in Chromium)
+        audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
+        console.log('Decode successful!', {
+          duration: audioBuffer.duration,
+          channels: audioBuffer.numberOfChannels,
+          sampleRate: audioBuffer.sampleRate
+        });
+      } catch (decodeError: any) {
+        console.error('Promise-based decode failed:', decodeError);
+        console.log('Trying callback-based decode...');
 
-        this.audioContext.decodeAudioData(
-          arrayBuffer,
-          (buffer) => {
-            clearTimeout(timeoutId);
-            console.log('Decode successful!', {
-              duration: buffer.duration,
-              channels: buffer.numberOfChannels,
-              sampleRate: buffer.sampleRate
-            });
-            resolve(buffer);
-          },
-          (error) => {
-            clearTimeout(timeoutId);
-            console.error('Decode error:', error);
-            reject(new Error(`Failed to decode audio: ${error?.message || 'Unknown error'}`));
-          }
-        );
-      });
+        // Fallback to callback-based version
+        audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Audio decoding timeout after 60 seconds'));
+          }, 60000);
+
+          this.audioContext.decodeAudioData(
+            arrayBuffer.slice(0),
+            (buffer) => {
+              clearTimeout(timeoutId);
+              console.log('Callback decode successful!');
+              resolve(buffer);
+            },
+            (error) => {
+              clearTimeout(timeoutId);
+              console.error('Callback decode error:', error);
+              reject(new Error(`Failed to decode audio: ${error?.message || decodeError?.message || 'Unknown error'}`));
+            }
+          );
+        });
+      }
 
       this.audioBuffers.set(sound.id, audioBuffer);
       console.log(`✅ Successfully loaded sound: ${sound.name}`);

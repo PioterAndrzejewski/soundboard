@@ -25,6 +25,20 @@ const App: React.FC = () => {
 
   // Initialize engines
   useEffect(() => {
+    // Add global error handler to catch crashes
+    const handleError = (event: ErrorEvent) => {
+      console.error('Global error caught:', event.error);
+      event.preventDefault();
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault();
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
     const initEngines = async () => {
       try {
         audioEngineRef.current = new AudioEngine();
@@ -46,6 +60,8 @@ const App: React.FC = () => {
     initEngines();
 
     return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       soundManagerRef.current?.destroy();
     };
   }, []);

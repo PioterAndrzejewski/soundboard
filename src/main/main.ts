@@ -5,6 +5,9 @@ import { StorageManager } from './storage';
 import { ProjectManager } from './projectManager';
 import { IpcChannel, Project } from '../shared/types';
 
+// Increase memory limits for audio processing
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
+
 let mainWindow: BrowserWindow | null = null;
 let storageManager: StorageManager;
 let projectManager: ProjectManager;
@@ -17,6 +20,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
+      // Increase memory limits for audio processing
+      v8CacheOptions: 'none',
     },
   });
 
