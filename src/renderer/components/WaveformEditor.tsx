@@ -38,7 +38,7 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   );
   const [dragging, setDragging] = useState<"start" | "end" | null>(null);
 
-  // ---- Load audio duration and generate placeholder waveform immediately ----
+  // ---- Load audio duration and waveform ----
   useEffect(() => {
     if (!filePath) return;
     let cancelled = false;
@@ -58,12 +58,13 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
       return fake;
     };
 
-    // Set placeholder immediately
+    // Set placeholder immediately so UI is responsive
     setWaveform(generatePlaceholder());
 
-    // Load duration using HTML Audio (fast and doesn't crash)
+    // Load real waveform in the background (non-blocking)
     (async () => {
       try {
+        // First, get duration quickly with HTML Audio
         const audio = new Audio();
         audio.src = toFileURL(filePath);
 
@@ -85,10 +86,68 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
           setAudioDuration(audio.duration);
           console.log(`✅ Audio duration loaded: ${audio.duration}s`);
         }
+
+        // Now try to load real waveform data in background using fetch + Web Audio
+        // This runs after the modal is already open and responsive
+        console.log("Loading real waveform data...");
+
+        const response = await fetch(toFileURL(filePath));
+        if (!response.ok) throw new Error("Failed to fetch audio file");
+
+        const arrayBuffer = await response.arrayBuffer();
+        if (cancelled) return;
+
+        // Decode using Web Audio API
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        if (cancelled) {
+          audioContext.close();
+          return;
+        }
+
+        // Extract waveform peaks
+        const channelData = audioBuffer.getChannelData(0);
+        const samples = audioBuffer.length;
+        const buckets = 500;
+        const blockSize = Math.floor(samples / buckets);
+        const peaks: Array<{ min: number; max: number }> = [];
+
+        for (let i = 0; i < buckets; i++) {
+          const start = i * blockSize;
+          const end = Math.min(start + blockSize, samples);
+          let min = 1;
+          let max = -1;
+
+          // Sample every 32nd point for speed
+          for (let j = start; j < end; j += 32) {
+            const value = channelData[j];
+            if (value < min) min = value;
+            if (value > max) max = value;
+          }
+
+          peaks.push({ min, max });
+
+          // Yield to UI every 50 buckets
+          if (i % 50 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (cancelled) {
+              audioContext.close();
+              return;
+            }
+          }
+        }
+
+        audioContext.close();
+
+        if (!cancelled) {
+          setWaveform(peaks);
+          console.log(`✅ Real waveform loaded with ${peaks.length} data points`);
+        }
+
       } catch (err) {
-        console.warn("Could not load audio duration:", err);
-        // Keep placeholder waveform and use provided duration prop
-        if (duration > 0) {
+        console.warn("Could not load real waveform, using placeholder:", err);
+        // Keep placeholder waveform and use provided duration prop if available
+        if (duration > 0 && audioDuration === 0) {
           setAudioDuration(duration);
         }
       }
@@ -97,7 +156,7 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [filePath, duration]);
+  }, [filePath, duration, audioDuration]);
 
   // ---- Drawing ----
   useEffect(() => {
