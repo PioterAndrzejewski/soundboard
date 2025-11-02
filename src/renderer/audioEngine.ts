@@ -1,9 +1,10 @@
-import { Sound, SoundSettings } from '../shared/types';
+import { Sound, SoundSettings, EffectsState } from '../shared/types';
 
 interface PlayingSound {
   id: string;
   soundId: string;
   audio: HTMLAudioElement;
+  source?: MediaElementAudioSourceNode;
   startTime: number;
   isGateMode: boolean;
   settings: SoundSettings;
@@ -15,8 +16,208 @@ export class AudioEngine {
   private masterVolume: number = 0.8;
   private outputDeviceId: string | undefined;
 
+  // Web Audio API context and effects nodes
+  private audioContext: AudioContext | null = null;
+  private masterGainNode: GainNode | null = null;
+  private lowShelfFilter: BiquadFilterNode | null = null;
+  private midPeakFilter: BiquadFilterNode | null = null;
+  private highShelfFilter: BiquadFilterNode | null = null;
+  private distortionNode: WaveShaperNode | null = null;
+  private reverbNode: ConvolverNode | null = null;
+  private delayNode: DelayNode | null = null;
+  private delayFeedback: GainNode | null = null;
+  private delayWet: GainNode | null = null;
+  private reverbWet: GainNode | null = null;
+  private currentEffects: EffectsState = {
+    pitch: 0,
+    filterLow: 1,
+    filterMid: 1,
+    filterHigh: 1,
+    filterResonance: 0,
+    distortion: 0,
+    reverb: 0,
+    delay: 0,
+  };
+
   constructor() {
-    console.log('AudioEngine initialized with HTML5 Audio');
+    console.log('AudioEngine initialized with HTML5 Audio + Web Audio API effects');
+    this.initializeWebAudio();
+  }
+
+  private initializeWebAudio(): void {
+    try {
+      this.audioContext = new AudioContext();
+
+      // Create master gain node
+      this.masterGainNode = this.audioContext.createGain();
+      this.masterGainNode.gain.value = this.masterVolume;
+
+      // Create filter nodes (3-band EQ)
+      this.lowShelfFilter = this.audioContext.createBiquadFilter();
+      this.lowShelfFilter.type = 'lowshelf';
+      this.lowShelfFilter.frequency.value = 200;
+      this.lowShelfFilter.gain.value = 0;
+
+      this.midPeakFilter = this.audioContext.createBiquadFilter();
+      this.midPeakFilter.type = 'peaking';
+      this.midPeakFilter.frequency.value = 1000;
+      this.midPeakFilter.gain.value = 0;
+      this.midPeakFilter.Q.value = 1;
+
+      this.highShelfFilter = this.audioContext.createBiquadFilter();
+      this.highShelfFilter.type = 'highshelf';
+      this.highShelfFilter.frequency.value = 3000;
+      this.highShelfFilter.gain.value = 0;
+
+      // Create distortion node
+      this.distortionNode = this.audioContext.createWaveShaper();
+      const initialCurve = this.makeDistortionCurve(0);
+      if (initialCurve) {
+        this.distortionNode.curve = initialCurve;
+      }
+      this.distortionNode.oversample = '4x';
+
+      // Create delay effect
+      this.delayNode = this.audioContext.createDelay(2.0);
+      this.delayNode.delayTime.value = 0.3;
+      this.delayFeedback = this.audioContext.createGain();
+      this.delayFeedback.gain.value = 0.3;
+      this.delayWet = this.audioContext.createGain();
+      this.delayWet.gain.value = 0;
+
+      // Create reverb wet gain
+      this.reverbWet = this.audioContext.createGain();
+      this.reverbWet.gain.value = 0;
+
+      // Create simple reverb impulse response
+      this.reverbNode = this.audioContext.createConvolver();
+      this.reverbNode.buffer = this.createReverbImpulse();
+
+      console.log('✅ Web Audio API initialized with effects chain');
+    } catch (error) {
+      console.error('Failed to initialize Web Audio API:', error);
+    }
+  }
+
+  private makeDistortionCurve(amount: number): Float32Array | null {
+    const samples = 44100;
+    const curve = new Float32Array(samples);
+    const deg = Math.PI / 180;
+    const k = amount * 100;
+
+    for (let i = 0; i < samples; i++) {
+      const x = (i * 2) / samples - 1;
+      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+    }
+    return curve as Float32Array;
+  }
+
+  private createReverbImpulse(): AudioBuffer {
+    if (!this.audioContext) throw new Error('AudioContext not initialized');
+
+    const sampleRate = this.audioContext.sampleRate;
+    const length = sampleRate * 2; // 2 second reverb
+    const impulse = this.audioContext.createBuffer(2, length, sampleRate);
+
+    for (let channel = 0; channel < 2; channel++) {
+      const channelData = impulse.getChannelData(channel);
+      for (let i = 0; i < length; i++) {
+        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+      }
+    }
+
+    return impulse;
+  }
+
+  public setEffects(effects: EffectsState): void {
+    this.currentEffects = { ...effects };
+    this.updateEffectsChain();
+  }
+
+  private updateEffectsChain(): void {
+    if (!this.audioContext) return;
+
+    const effects = this.currentEffects;
+
+    // Update filters (3-band EQ)
+    if (this.lowShelfFilter) {
+      const lowGain = (effects.filterLow - 1) * 24; // -24dB to 0dB
+      this.lowShelfFilter.gain.value = lowGain;
+      this.lowShelfFilter.Q.value = effects.filterResonance * 10 + 0.1;
+    }
+
+    if (this.midPeakFilter) {
+      const midGain = (effects.filterMid - 1) * 24;
+      this.midPeakFilter.gain.value = midGain;
+      this.midPeakFilter.Q.value = effects.filterResonance * 10 + 1;
+    }
+
+    if (this.highShelfFilter) {
+      const highGain = (effects.filterHigh - 1) * 24;
+      this.highShelfFilter.gain.value = highGain;
+      this.highShelfFilter.Q.value = effects.filterResonance * 10 + 0.1;
+    }
+
+    // Update distortion
+    if (this.distortionNode) {
+      const curve = this.makeDistortionCurve(effects.distortion);
+      if (curve) {
+        this.distortionNode.curve = curve;
+      }
+    }
+
+    // Update delay mix
+    if (this.delayWet) {
+      this.delayWet.gain.value = effects.delay;
+    }
+
+    // Update reverb mix
+    if (this.reverbWet) {
+      this.reverbWet.gain.value = effects.reverb;
+    }
+
+    // Note: Pitch shifting requires more complex implementation
+    // For now, we'll use playbackRate as an approximation
+    this.playingSounds.forEach(ps => {
+      if (effects.pitch !== 0) {
+        const pitchFactor = Math.pow(2, effects.pitch / 12);
+        ps.audio.playbackRate = pitchFactor;
+      } else {
+        ps.audio.playbackRate = 1.0;
+      }
+    });
+  }
+
+  private connectEffectsChain(source: MediaElementAudioSourceNode): void {
+    if (!this.audioContext || !this.masterGainNode) return;
+
+    const dryGain = this.audioContext.createGain();
+    dryGain.gain.value = 1;
+
+    // Main signal chain: source -> filters -> distortion -> dry gain -> master
+    source.connect(this.lowShelfFilter!);
+    this.lowShelfFilter!.connect(this.midPeakFilter!);
+    this.midPeakFilter!.connect(this.highShelfFilter!);
+    this.highShelfFilter!.connect(this.distortionNode!);
+    this.distortionNode!.connect(dryGain);
+
+    // Delay send/return
+    dryGain.connect(this.delayNode!);
+    this.delayNode!.connect(this.delayFeedback!);
+    this.delayFeedback!.connect(this.delayNode!); // feedback loop
+    this.delayNode!.connect(this.delayWet!);
+    this.delayWet!.connect(this.masterGainNode);
+
+    // Reverb send/return
+    dryGain.connect(this.reverbNode!);
+    this.reverbNode!.connect(this.reverbWet!);
+    this.reverbWet!.connect(this.masterGainNode);
+
+    // Dry signal to master
+    dryGain.connect(this.masterGainNode);
+
+    // Master to destination
+    this.masterGainNode.connect(this.audioContext.destination);
   }
 
   public setMasterVolume(volume: number): void {
@@ -144,10 +345,22 @@ export class AudioEngine {
       }, stepTime);
     }
 
+    // Connect to Web Audio API effects chain
+    let source: MediaElementAudioSourceNode | undefined;
+    if (this.audioContext) {
+      try {
+        source = this.audioContext.createMediaElementSource(audio);
+        this.connectEffectsChain(source);
+      } catch (error) {
+        console.warn('Failed to connect audio to effects chain:', error);
+      }
+    }
+
     const playingSound: PlayingSound = {
       id: playingId,
       soundId: sound.id,
       audio,
+      source,
       startTime: Date.now(),
       isGateMode: sound.settings.playMode === 'gate',
       settings: sound.settings,

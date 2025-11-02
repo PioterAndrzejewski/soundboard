@@ -1,10 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { UIState } from '../../shared/types';
+import { UIState, EffectsState } from '../../shared/types';
+
+type MappingTarget = 'volume' | 'stopall' | 'sound' | keyof EffectsState;
 
 interface ExtendedUIState extends UIState {
   lastStopAllTrigger: number;
   isMidiMappingMode: boolean;
-  mappingTarget: 'volume' | 'stopall' | 'sound' | null;
+  mappingTarget: MappingTarget | null;
   isActiveSoundsPanelOpen: boolean;
   lastTriggeredSoundId: string | null;
   lastTriggeredSoundTimestamp: number;
@@ -65,10 +67,15 @@ const uiSlice = createSlice({
         state.mappingTarget = null;
       }
     },
-    startMappingTarget: (state, action: PayloadAction<'volume' | 'stopall' | 'sound'>) => {
+    startMappingTarget: (state, action: PayloadAction<MappingTarget>) => {
       state.mappingTarget = action.payload;
       state.isMidiListening = true;
-      state.listeningMode = action.payload;
+      // For effect mappings, use 'volume' as the listening mode (CC messages)
+      if (action.payload === 'sound' || action.payload === 'stopall') {
+        state.listeningMode = action.payload;
+      } else {
+        state.listeningMode = 'volume'; // Effects use CC messages like volume
+      }
     },
     clearMappingTarget: (state) => {
       state.mappingTarget = null;

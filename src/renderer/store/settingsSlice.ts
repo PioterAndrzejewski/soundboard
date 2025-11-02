@@ -1,10 +1,21 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AppSettings } from '../../shared/types';
+import { AppSettings, EffectsState, EffectCCMapping } from '../../shared/types';
 
 const initialState: AppSettings = {
   masterVolume: 0.8,
   defaultFadeInMs: 100,
   defaultFadeOutMs: 500,
+  effects: {
+    pitch: 0,
+    filterLow: 1,
+    filterMid: 1,
+    filterHigh: 1,
+    filterResonance: 0,
+    distortion: 0,
+    reverb: 0,
+    delay: 0,
+  },
+  effectsMidiMappings: {},
 };
 
 const settingsSlice = createSlice({
@@ -20,8 +31,33 @@ const settingsSlice = createSlice({
     setMasterVolume: (state, action: PayloadAction<number>) => {
       state.masterVolume = action.payload;
     },
+    setEffectValue: (state, action: PayloadAction<{ effect: keyof EffectsState; value: number }>) => {
+      if (!state.effects) {
+        state.effects = {
+          pitch: 0,
+          filterLow: 1,
+          filterMid: 1,
+          filterHigh: 1,
+          filterResonance: 0,
+          distortion: 0,
+          reverb: 0,
+          delay: 0,
+        };
+      }
+      state.effects[action.payload.effect] = action.payload.value;
+    },
+    setEffectMidiMapping: (state, action: PayloadAction<{ effect: keyof EffectsState; mapping?: EffectCCMapping }>) => {
+      if (!state.effectsMidiMappings) {
+        state.effectsMidiMappings = {};
+      }
+      if (action.payload.mapping) {
+        state.effectsMidiMappings[action.payload.effect] = action.payload.mapping;
+      } else {
+        delete state.effectsMidiMappings[action.payload.effect];
+      }
+    },
   },
 });
 
-export const { setSettings, updateSettings, setMasterVolume } = settingsSlice.actions;
+export const { setSettings, updateSettings, setMasterVolume, setEffectValue, setEffectMidiMapping } = settingsSlice.actions;
 export default settingsSlice.reducer;
