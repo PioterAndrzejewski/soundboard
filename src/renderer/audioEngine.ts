@@ -149,6 +149,30 @@ export class AudioEngine {
       this.cleanupSound(playingId);
     };
 
+    // Set start time if specified
+    if (sound.settings.startTime !== undefined && sound.settings.startTime > 0) {
+      audio.currentTime = sound.settings.startTime;
+    }
+
+    // Handle end time for loop mode or regular playback
+    if (sound.settings.endTime !== undefined && sound.settings.endTime > 0) {
+      const checkEndTime = () => {
+        if (audio.currentTime >= sound.settings.endTime!) {
+          if (sound.settings.playMode === 'loop' && sound.settings.startTime !== undefined) {
+            // Loop back to start time
+            audio.currentTime = sound.settings.startTime || 0;
+          } else if (sound.settings.playMode === 'loop') {
+            // Loop back to beginning
+            audio.currentTime = 0;
+          } else {
+            // Stop playback
+            this.stopSound(playingId);
+          }
+        }
+      };
+      audio.addEventListener('timeupdate', checkEndTime);
+    }
+
     // Start playback
     try {
       await audio.play();

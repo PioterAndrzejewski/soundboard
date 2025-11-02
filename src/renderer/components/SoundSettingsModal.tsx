@@ -5,6 +5,7 @@ import { closeSettingsModal, startMidiListening, stopMidiListening, setDirty } f
 import { Sound, MidiMessage } from '../../shared/types';
 import { SoundManager } from '../soundManager';
 import { MidiHandler } from '../midiHandler';
+import WaveformEditor from './WaveformEditor';
 
 interface SoundSettingsModalProps {
   soundManager: SoundManager | null;
@@ -94,12 +95,13 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
               value={editedSound.settings.playMode}
               onChange={(e) => setEditedSound({
                 ...editedSound,
-                settings: { ...editedSound.settings, playMode: e.target.value as 'trigger' | 'gate' },
+                settings: { ...editedSound.settings, playMode: e.target.value as 'trigger' | 'gate' | 'loop' },
               })}
               className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
             >
               <option value="trigger">Trigger (one-shot)</option>
               <option value="gate">Gate (hold to play)</option>
+              <option value="loop">Loop (continuous)</option>
             </select>
           </div>
 
@@ -150,6 +152,57 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
                 className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Start Time (s)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={editedSound.settings.startTime || 0}
+                onChange={(e) => setEditedSound({
+                  ...editedSound,
+                  settings: { ...editedSound.settings, startTime: parseFloat(e.target.value) || 0 },
+                })}
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">End Time (s)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={editedSound.settings.endTime || 0}
+                onChange={(e) => setEditedSound({
+                  ...editedSound,
+                  settings: { ...editedSound.settings, endTime: parseFloat(e.target.value) || 0 },
+                })}
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
+                placeholder="0 = full duration"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Waveform</label>
+            <WaveformEditor
+              filePath={editedSound.filePath}
+              startTime={editedSound.settings.startTime || 0}
+              endTime={editedSound.settings.endTime || 0}
+              duration={0}
+              onStartTimeChange={(time) => setEditedSound({
+                ...editedSound,
+                settings: { ...editedSound.settings, startTime: time },
+              })}
+              onEndTimeChange={(time) => setEditedSound({
+                ...editedSound,
+                settings: { ...editedSound.settings, endTime: time },
+              })}
+            />
           </div>
 
           <div>
