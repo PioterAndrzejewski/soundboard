@@ -93,16 +93,16 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
     }
   }, [isDragging, dragStartValue.current]);
 
-  const displayValue = unit === 'st'
-    ? (value >= 0 ? `+${value.toFixed(1)}` : value.toFixed(1))
-    : unit === 'x'
+  const displayValue = unit === 'x'
     ? value.toFixed(2)
+    : unit === '%'
+    ? `${Math.round(value * 100)}`
     : value.toFixed(2);
 
   return (
-    <div className={`flex flex-col items-center gap-1 ${isMappingMode ? 'cursor-pointer' : ''}`}>
+    <div className={`flex flex-col items-center gap-1.5 ${isMappingMode ? 'cursor-pointer' : ''}`}>
       <div
-        className={`relative w-10 h-10 rounded-full bg-dark-600 border transition-all ${
+        className={`relative w-12 h-12 rounded-full bg-dark-600 border transition-all ${
           isBeingMapped
             ? 'border-green-500 animate-pulse'
             : isMappingMode
@@ -115,7 +115,7 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
       >
         {/* Center dot */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-1.5 h-1.5 bg-dark-400 rounded-full" />
+          <div className="w-2 h-2 bg-dark-400 rounded-full" />
         </div>
 
         {/* Indicator line - fixed positioning */}
@@ -125,20 +125,20 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
             transform: `rotate(${angle}deg)`,
           }}
         >
-          <div className="w-4 h-0.5 bg-blue-400 rounded-full" style={{ marginLeft: '50%', transformOrigin: 'left center' }} />
+          <div className="w-5 h-0.5 bg-blue-400 rounded-full" style={{ marginLeft: '50%', transformOrigin: 'left center' }} />
         </div>
 
         {/* MIDI indicator */}
         {hasMidiMapping && (
-          <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center text-[8px]">
+          <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full flex items-center justify-center text-[9px]">
             🎹
           </div>
         )}
       </div>
 
       <div className="text-center">
-        <div className="text-[10px] text-dark-200 font-medium">{label}</div>
-        <div className="text-[9px] text-dark-400 font-mono">
+        <div className="text-[11px] text-dark-200 font-medium">{label}</div>
+        <div className="text-[10px] text-dark-400 font-mono">
           {displayValue}{unit}
         </div>
       </div>
@@ -214,7 +214,7 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ midiHandler }) => {
 
   const effects = settings.effects || {
     speed: 1,
-    pitch: 0,
+    pan: 0,
     filterLow: 1,
     filterMid: 1,
     filterHigh: 1,
@@ -243,21 +243,20 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ midiHandler }) => {
     unit?: string;
   }> = [
     { key: 'speed', label: 'Speed', min: 0.5, max: 2, defaultValue: 1, unit: 'x' },
-    { key: 'pitch', label: 'Pitch', min: -12, max: 12, defaultValue: 0, unit: 'st' },
-    { key: 'filterLow', label: 'Low', min: 0, max: 1, defaultValue: 1 },
-    { key: 'filterMid', label: 'Mid', min: 0, max: 1, defaultValue: 1 },
-    { key: 'filterHigh', label: 'High', min: 0, max: 1, defaultValue: 1 },
-    { key: 'distortion', label: 'Dist', min: 0, max: 1, defaultValue: 0 },
-    { key: 'reverb', label: 'Reverb', min: 0, max: 1, defaultValue: 0 },
-    { key: 'delay', label: 'Delay', min: 0, max: 1, defaultValue: 0 },
+    { key: 'pan', label: 'Pan', min: -1, max: 1, defaultValue: 0, unit: '%' },
+    { key: 'filterLow', label: 'Low', min: 0, max: 1, defaultValue: 1, unit: '%' },
+    { key: 'filterMid', label: 'Mid', min: 0, max: 1, defaultValue: 1, unit: '%' },
+    { key: 'filterHigh', label: 'High', min: 0, max: 1, defaultValue: 1, unit: '%' },
+    { key: 'distortion', label: 'Dist', min: 0, max: 1, defaultValue: 0, unit: '%' },
+    { key: 'reverb', label: 'Reverb', min: 0, max: 1, defaultValue: 0, unit: '%' },
+    { key: 'delay', label: 'Delay', min: 0, max: 1, defaultValue: 0, unit: '%' },
   ];
 
   return (
     <div className="bg-dark-700 border-t-2 border-dark-500 p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-6">
         {/* Left side - Effects knobs */}
-        <div className="flex-1 flex items-center gap-2">
-          <span className="text-xs text-dark-300 font-semibold uppercase mr-2">Effects</span>
+        <div className="flex-1 flex items-center justify-between">
           {knobs.map((knob) => (
             <SmallKnob
               key={knob.key}

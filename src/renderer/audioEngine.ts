@@ -19,6 +19,7 @@ export class AudioEngine {
   // Web Audio API context and effects nodes
   private audioContext: AudioContext | null = null;
   private masterGainNode: GainNode | null = null;
+  private pannerNode: StereoPannerNode | null = null;
   private lowShelfFilter: BiquadFilterNode | null = null;
   private midPeakFilter: BiquadFilterNode | null = null;
   private highShelfFilter: BiquadFilterNode | null = null;
@@ -30,7 +31,7 @@ export class AudioEngine {
   private reverbWet: GainNode | null = null;
   private currentEffects: EffectsState = {
     speed: 1,
-    pitch: 0,
+    pan: 0,
     filterLow: 1,
     filterMid: 1,
     filterHigh: 1,
@@ -51,6 +52,10 @@ export class AudioEngine {
       // Create master gain node
       this.masterGainNode = this.audioContext.createGain();
       this.masterGainNode.gain.value = this.masterVolume;
+
+      // Create stereo panner
+      this.pannerNode = this.audioContext.createStereoPanner();
+      this.pannerNode.pan.value = 0; // Center
 
       // Create filter nodes (3-band EQ)
       this.lowShelfFilter = this.audioContext.createBiquadFilter();
@@ -139,6 +144,11 @@ export class AudioEngine {
 
     const effects = this.currentEffects;
 
+    // Update pan
+    if (this.pannerNode) {
+      this.pannerNode.pan.value = effects.pan;
+    }
+
     // Update filters (3-band EQ)
     if (this.lowShelfFilter) {
       const lowGain = (effects.filterLow - 1) * 24; // -24dB to 0dB
@@ -189,8 +199,9 @@ export class AudioEngine {
     const dryGain = this.audioContext.createGain();
     dryGain.gain.value = 1;
 
-    // Main signal chain: source -> filters -> distortion -> dry gain -> master
-    source.connect(this.lowShelfFilter!);
+    // Main signal chain: source -> panner -> filters -> distortion -> dry gain -> master
+    source.connect(this.pannerNode!);
+    this.pannerNode!.connect(this.lowShelfFilter!);
     this.lowShelfFilter!.connect(this.midPeakFilter!);
     this.midPeakFilter!.connect(this.highShelfFilter!);
     this.highShelfFilter!.connect(this.distortionNode!);

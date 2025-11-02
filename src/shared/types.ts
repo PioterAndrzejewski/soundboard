@@ -56,7 +56,7 @@ export interface EffectCCMapping {
 
 export interface EffectsState {
   speed: number; // 0.5 to 2.0 (playback rate)
-  pitch: number; // -12 to +12 semitones (pitch shift without tempo change)
+  pan: number; // -1 to 1 (stereo balance: -1=left, 0=center, 1=right)
   filterLow: number; // 0-1
   filterMid: number; // 0-1
   filterHigh: number; // 0-1
@@ -67,7 +67,7 @@ export interface EffectsState {
 
 export interface EffectsMidiMappings {
   speed?: EffectCCMapping;
-  pitch?: EffectCCMapping;
+  pan?: EffectCCMapping;
   filterLow?: EffectCCMapping;
   filterMid?: EffectCCMapping;
   filterHigh?: EffectCCMapping;

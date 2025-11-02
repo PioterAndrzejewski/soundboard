@@ -156,7 +156,7 @@ const App: React.FC = () => {
       // Handle effects mappings
       if (message.type === "cc" && settings.effectsMidiMappings) {
         const effectKeys: Array<keyof EffectsState> = [
-          'speed', 'pitch', 'filterLow', 'filterMid', 'filterHigh',
+          'speed', 'pan', 'filterLow', 'filterMid', 'filterHigh',
           'distortion', 'reverb', 'delay'
         ];
 
@@ -173,9 +173,9 @@ const App: React.FC = () => {
             if (effectKey === 'speed') {
               // Speed: 0.5 to 2.0
               value = 0.5 + ((message.value / 127) * 1.5);
-            } else if (effectKey === 'pitch') {
-              // Pitch: -12 to +12 semitones
-              value = ((message.value / 127) * 24) - 12;
+            } else if (effectKey === 'pan') {
+              // Pan: -1 (left) to 1 (right)
+              value = ((message.value / 127) * 2) - 1;
             } else {
               // All other effects: 0 to 1
               value = message.value / 127;
@@ -248,7 +248,7 @@ const App: React.FC = () => {
     if (!midiHandlerRef.current || !ui.isMidiMappingMode) return;
 
     const effectKeys: Array<keyof EffectsState> = [
-      'speed', 'pitch', 'filterLow', 'filterMid', 'filterHigh',
+      'speed', 'pan', 'filterLow', 'filterMid', 'filterHigh',
       'distortion', 'reverb', 'delay'
     ];
 

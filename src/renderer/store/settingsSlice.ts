@@ -7,7 +7,7 @@ const initialState: AppSettings = {
   defaultFadeOutMs: 500,
   effects: {
     speed: 1,
-    pitch: 0,
+    pan: 0,
     filterLow: 1,
     filterMid: 1,
     filterHigh: 1,
@@ -35,7 +35,7 @@ const settingsSlice = createSlice({
       if (!state.effects) {
         state.effects = {
           speed: 1,
-          pitch: 0,
+          pan: 0,
           filterLow: 1,
           filterMid: 1,
           filterHigh: 1,
