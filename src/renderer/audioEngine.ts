@@ -29,11 +29,11 @@ export class AudioEngine {
   private delayWet: GainNode | null = null;
   private reverbWet: GainNode | null = null;
   private currentEffects: EffectsState = {
+    speed: 1,
     pitch: 0,
     filterLow: 1,
     filterMid: 1,
     filterHigh: 1,
-    filterResonance: 0,
     distortion: 0,
     reverb: 0,
     delay: 0,
@@ -143,19 +143,16 @@ export class AudioEngine {
     if (this.lowShelfFilter) {
       const lowGain = (effects.filterLow - 1) * 24; // -24dB to 0dB
       this.lowShelfFilter.gain.value = lowGain;
-      this.lowShelfFilter.Q.value = effects.filterResonance * 10 + 0.1;
     }
 
     if (this.midPeakFilter) {
       const midGain = (effects.filterMid - 1) * 24;
       this.midPeakFilter.gain.value = midGain;
-      this.midPeakFilter.Q.value = effects.filterResonance * 10 + 1;
     }
 
     if (this.highShelfFilter) {
       const highGain = (effects.filterHigh - 1) * 24;
       this.highShelfFilter.gain.value = highGain;
-      this.highShelfFilter.Q.value = effects.filterResonance * 10 + 0.1;
     }
 
     // Update distortion
@@ -176,15 +173,13 @@ export class AudioEngine {
       this.reverbWet.gain.value = effects.reverb;
     }
 
-    // Note: Pitch shifting requires more complex implementation
-    // For now, we'll use playbackRate as an approximation
+    // Update speed and pitch for all playing sounds
+    // Speed: direct playback rate control (changes both pitch and tempo)
+    // Pitch: would need pitch shifter algorithm (not yet implemented - uses speed for now)
     this.playingSounds.forEach(ps => {
-      if (effects.pitch !== 0) {
-        const pitchFactor = Math.pow(2, effects.pitch / 12);
-        ps.audio.playbackRate = pitchFactor;
-      } else {
-        ps.audio.playbackRate = 1.0;
-      }
+      // For now, speed controls playback rate
+      // TODO: Implement proper pitch shifting without tempo change
+      ps.audio.playbackRate = effects.speed;
     });
   }
 

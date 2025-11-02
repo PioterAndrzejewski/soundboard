@@ -6,11 +6,11 @@ const initialState: AppSettings = {
   defaultFadeInMs: 100,
   defaultFadeOutMs: 500,
   effects: {
+    speed: 1,
     pitch: 0,
     filterLow: 1,
     filterMid: 1,
     filterHigh: 1,
-    filterResonance: 0,
     distortion: 0,
     reverb: 0,
     delay: 0,
@@ -34,11 +34,11 @@ const settingsSlice = createSlice({
     setEffectValue: (state, action: PayloadAction<{ effect: keyof EffectsState; value: number }>) => {
       if (!state.effects) {
         state.effects = {
+          speed: 1,
           pitch: 0,
           filterLow: 1,
           filterMid: 1,
           filterHigh: 1,
-          filterResonance: 0,
           distortion: 0,
           reverb: 0,
           delay: 0,

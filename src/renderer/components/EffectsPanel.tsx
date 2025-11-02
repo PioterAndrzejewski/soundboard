@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 
-type EffectKnobType = 'pitch' | 'filterLow' | 'filterMid' | 'filterHigh' | 'filterResonance' | 'distortion' | 'reverb' | 'delay';
+type EffectKnobType = 'speed' | 'pitch' | 'filterLow' | 'filterMid' | 'filterHigh' | 'distortion' | 'reverb' | 'delay';
 
 interface EffectKnobProps {
   label: string;
@@ -157,11 +157,11 @@ const EffectsPanel: React.FC<EffectsPanelProps> = ({ onEffectChange, onStartMapp
     defaultValue: number;
     unit?: string;
   }> = [
+    { key: 'speed', label: 'Speed', min: 0.5, max: 2, defaultValue: 1, unit: 'x' },
     { key: 'pitch', label: 'Pitch', min: -12, max: 12, defaultValue: 0, unit: 'st' },
     { key: 'filterLow', label: 'Low', min: 0, max: 1, defaultValue: 1 },
     { key: 'filterMid', label: 'Mid', min: 0, max: 1, defaultValue: 1 },
     { key: 'filterHigh', label: 'High', min: 0, max: 1, defaultValue: 1 },
-    { key: 'filterResonance', label: 'Resonance', min: 0, max: 1, defaultValue: 0 },
     { key: 'distortion', label: 'Distortion', min: 0, max: 1, defaultValue: 0 },
     { key: 'reverb', label: 'Reverb', min: 0, max: 1, defaultValue: 0 },
     { key: 'delay', label: 'Delay', min: 0, max: 1, defaultValue: 0 },

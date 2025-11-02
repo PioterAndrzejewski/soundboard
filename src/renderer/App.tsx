@@ -28,7 +28,6 @@ import SoundSettingsModal from "./components/SoundSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
 import BottomPanel from "./components/BottomPanel";
-import EffectsPanel from "./components/EffectsPanel";
 import { Project, EffectsState } from "../shared/types";
 
 const App: React.FC = () => {
@@ -157,8 +156,8 @@ const App: React.FC = () => {
       // Handle effects mappings
       if (message.type === "cc" && settings.effectsMidiMappings) {
         const effectKeys: Array<keyof EffectsState> = [
-          'pitch', 'filterLow', 'filterMid', 'filterHigh',
-          'filterResonance', 'distortion', 'reverb', 'delay'
+          'speed', 'pitch', 'filterLow', 'filterMid', 'filterHigh',
+          'distortion', 'reverb', 'delay'
         ];
 
         for (const effectKey of effectKeys) {
@@ -171,7 +170,10 @@ const App: React.FC = () => {
           ) {
             // Calculate value based on effect type
             let value: number;
-            if (effectKey === 'pitch') {
+            if (effectKey === 'speed') {
+              // Speed: 0.5 to 2.0
+              value = 0.5 + ((message.value / 127) * 1.5);
+            } else if (effectKey === 'pitch') {
               // Pitch: -12 to +12 semitones
               value = ((message.value / 127) * 24) - 12;
             } else {
@@ -246,8 +248,8 @@ const App: React.FC = () => {
     if (!midiHandlerRef.current || !ui.isMidiMappingMode) return;
 
     const effectKeys: Array<keyof EffectsState> = [
-      'pitch', 'filterLow', 'filterMid', 'filterHigh',
-      'filterResonance', 'distortion', 'reverb', 'delay'
+      'speed', 'pitch', 'filterLow', 'filterMid', 'filterHigh',
+      'distortion', 'reverb', 'delay'
     ];
 
     if (!ui.mappingTarget || !effectKeys.includes(ui.mappingTarget as keyof EffectsState)) return;
@@ -510,15 +512,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleEffectChange = (effect: keyof EffectsState, value: number) => {
-    dispatch(setEffectValue({ effect, value }));
-    dispatch(setDirty(true));
-  };
-
-  const handleStartEffectMapping = (effect: keyof EffectsState) => {
-    dispatch(startMappingTarget(effect));
-  };
-
   return (
     <div className="flex flex-col h-screen bg-dark-800 text-dark-50">
       <Header
@@ -552,11 +545,6 @@ const App: React.FC = () => {
       </div>
 
       <BottomPanel midiHandler={midiHandlerRef.current} />
-
-      <EffectsPanel
-        onEffectChange={handleEffectChange}
-        onStartMapping={handleStartEffectMapping}
-      />
 
       <SoundSettingsModal
         soundManager={soundManagerRef.current}

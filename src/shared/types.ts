@@ -55,22 +55,22 @@ export interface EffectCCMapping {
 }
 
 export interface EffectsState {
-  pitch: number; // -12 to +12 semitones
+  speed: number; // 0.5 to 2.0 (playback rate)
+  pitch: number; // -12 to +12 semitones (pitch shift without tempo change)
   filterLow: number; // 0-1
   filterMid: number; // 0-1
   filterHigh: number; // 0-1
-  filterResonance: number; // 0-1
   distortion: number; // 0-1
   reverb: number; // 0-1
   delay: number; // 0-1
 }
 
 export interface EffectsMidiMappings {
+  speed?: EffectCCMapping;
   pitch?: EffectCCMapping;
   filterLow?: EffectCCMapping;
   filterMid?: EffectCCMapping;
   filterHigh?: EffectCCMapping;
-  filterResonance?: EffectCCMapping;
   distortion?: EffectCCMapping;
   reverb?: EffectCCMapping;
   delay?: EffectCCMapping;
