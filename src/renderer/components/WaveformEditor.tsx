@@ -24,58 +24,47 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
   const [audioDuration, setAudioDuration] = useState(duration);
 
-  // Load and decode audio file to get waveform data
+  // Load audio file to get duration (no waveform visualization)
   useEffect(() => {
-    const loadWaveform = async () => {
+    const loadAudio = async () => {
       try {
-        console.log('Loading waveform for:', filePath);
+        console.log('Loading audio for:', filePath);
 
-        // Use Electron IPC to read the audio file
-        const arrayBuffer = await window.electronAPI.readAudioFile(filePath);
-        console.log('File loaded, size:', arrayBuffer.byteLength, 'bytes');
+        // Create a simple audio element to get duration
+        const audio = new Audio();
 
-        // Create audio context and decode
-        const audioContext = new AudioContext();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        console.log('Audio decoded, duration:', audioBuffer.duration, 'seconds');
+        // Normalize file path for file:// URL
+        const normalizedPath = filePath.replace(/\\/g, '/');
+        const fileUrl = /^[A-Za-z]:\//.test(normalizedPath)
+          ? `file:///${normalizedPath}`
+          : `file://${normalizedPath}`;
 
-        setAudioDuration(audioBuffer.duration);
+        audio.src = fileUrl;
 
-        // Merge to mono if stereo
-        const ch0 = audioBuffer.getChannelData(0);
-        const ch1 = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : null;
+        // Wait for metadata to load
+        await new Promise<void>((resolve, reject) => {
+          audio.addEventListener('loadedmetadata', () => resolve());
+          audio.addEventListener('error', () => reject(new Error('Failed to load audio')));
+        });
 
-        const samples = new Float32Array(ch0.length);
-        for (let i = 0; i < ch0.length; i++) {
-          samples[i] = ch1 ? (ch0[i] + ch1[i]) / 2 : ch0[i];
-        }
+        setAudioDuration(audio.duration);
+        console.log('Audio loaded, duration:', audio.duration, 'seconds');
 
-        // Downsample to canvas width using min/max per bucket (gives nice "peaks")
-        const buckets = 500; // Number of buckets for waveform
-        const blockSize = Math.floor(samples.length / buckets);
+        // Create simple placeholder waveform (bars of equal height)
+        const buckets = 500;
         const peaks = [];
-
         for (let i = 0; i < buckets; i++) {
-          const start = i * blockSize;
-          const end = Math.min(start + blockSize, samples.length);
-          let min = 1, max = -1;
-          for (let j = start; j < end; j++) {
-            const s = samples[j];
-            if (s < min) min = s;
-            if (s > max) max = s;
-          }
-          peaks.push({ min, max });
+          // Create a simple wave pattern
+          peaks.push({ min: -0.5, max: 0.5 });
         }
-
         setWaveformData(peaks);
-        audioContext.close();
       } catch (error) {
-        console.error('Failed to load waveform:', error);
+        console.error('Failed to load audio:', error);
       }
     };
 
     if (filePath) {
-      loadWaveform();
+      loadAudio();
     }
   }, [filePath]);
 
