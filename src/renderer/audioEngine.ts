@@ -73,7 +73,7 @@ export class AudioEngine {
       this.distortionNode = this.audioContext.createWaveShaper();
       const initialCurve = this.makeDistortionCurve(0);
       if (initialCurve) {
-        this.distortionNode.curve = initialCurve;
+        this.distortionNode.curve = initialCurve as any;
       }
       this.distortionNode.oversample = '4x';
 
@@ -109,7 +109,7 @@ export class AudioEngine {
       const x = (i * 2) / samples - 1;
       curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
     }
-    return curve as Float32Array;
+    return curve as any;
   }
 
   private createReverbImpulse(): AudioBuffer {
@@ -162,7 +162,7 @@ export class AudioEngine {
     if (this.distortionNode) {
       const curve = this.makeDistortionCurve(effects.distortion);
       if (curve) {
-        this.distortionNode.curve = curve;
+        this.distortionNode.curve = curve as any;
       }
     }
 
