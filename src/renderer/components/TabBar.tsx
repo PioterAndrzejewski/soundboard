@@ -88,12 +88,11 @@ const TabBar: React.FC = () => {
             }}
             className={`px-4 py-2 rounded-t-lg cursor-pointer transition-all flex items-center gap-2 ${
               activeTabId === tab.id
-                ? 'ring-2 ring-opacity-50'
+                ? 'ring-2 ring-white ring-opacity-30'
                 : 'opacity-70 hover:opacity-100'
             }`}
             style={{
               backgroundColor: tab.color,
-              ringColor: tab.color,
             }}
           >
             {editingTabId === tab.id ? (
