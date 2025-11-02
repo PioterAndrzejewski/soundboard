@@ -8,7 +8,7 @@ interface PlayingSound {
   startTime: number;
   isGateMode: boolean;
   settings: SoundSettings;
-  fadeOutTimeout?: number;
+  fadeOutTimeout?: ReturnType<typeof setTimeout>;
 }
 
 export class AudioEngine {
@@ -48,25 +48,36 @@ export class AudioEngine {
       }
 
       // Use IPC to read the file from the main process
-      const receivedData = await window.electronAPI.readAudioFile(sound.filePath);
-      console.log('Audio file read, type:', typeof receivedData, 'length:', receivedData?.length || receivedData?.byteLength);
+      const receivedData: any = await window.electronAPI.readAudioFile(sound.filePath);
+      console.log('Audio file read, type:', typeof receivedData, 'constructor:', receivedData?.constructor?.name);
 
       // Convert to ArrayBuffer
       let arrayBuffer: ArrayBuffer;
       if (receivedData instanceof ArrayBuffer) {
         console.log('Received ArrayBuffer directly');
         arrayBuffer = receivedData.slice(0);
-      } else if (ArrayBuffer.isView(receivedData)) {
+      } else if (receivedData && typeof receivedData === 'object' && 'byteLength' in receivedData && 'buffer' in receivedData) {
         console.log('Received ArrayBuffer view, converting...');
-        arrayBuffer = receivedData.buffer.slice(
-          receivedData.byteOffset,
-          receivedData.byteOffset + receivedData.byteLength
-        );
+        const view = receivedData as ArrayBufferView;
+        const sourceBuffer = view.buffer;
+        // Handle both ArrayBuffer and SharedArrayBuffer
+        if (sourceBuffer instanceof ArrayBuffer) {
+          arrayBuffer = sourceBuffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+        } else {
+          // SharedArrayBuffer case - copy to regular ArrayBuffer
+          const uint8 = new Uint8Array(sourceBuffer, view.byteOffset, view.byteLength);
+          arrayBuffer = uint8.slice(0).buffer;
+        }
       } else if (Array.isArray(receivedData)) {
         console.log('Received array, converting to Uint8Array...');
         const uint8 = new Uint8Array(receivedData);
         arrayBuffer = uint8.buffer;
+      } else if (receivedData && typeof receivedData === 'object' && 'data' in receivedData) {
+        console.log('Received Buffer object, converting...');
+        const uint8 = new Uint8Array(receivedData.data);
+        arrayBuffer = uint8.buffer;
       } else {
+        console.error('Unexpected data type:', typeof receivedData, receivedData);
         throw new Error('Unexpected data type received from IPC');
       }
 
