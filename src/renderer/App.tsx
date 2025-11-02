@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from './store/hooks';
 import { setSounds, addSound, removeSound, updateSound, reorderSounds } from './store/soundsSlice';
 import { setSettings, setMasterVolume } from './store/settingsSlice';
-import { setCurrentProjectPath, setDirty, triggerStopAll, triggerSoundHighlight } from './store/uiSlice';
+import { setCurrentProjectPath, setDirty, triggerStopAll, triggerSoundHighlight, stopMidiListening } from './store/uiSlice';
 import { setTabs } from './store/tabsSlice';
 import { AudioEngine } from './audioEngine';
 import { MidiHandler } from './midiHandler';
@@ -147,6 +147,54 @@ const App: React.FC = () => {
     };
   }, [midiHandlerRef.current, settings.volumeMapping, settings.stopAllMapping, dispatch]);
 
+  // Handle direct MIDI assignment for sounds (when not in modal)
+  useEffect(() => {
+    if (!midiHandlerRef.current || !ui.isMidiListening || ui.listeningMode !== 'sound' || ui.isSettingsModalOpen) return;
+    if (!ui.selectedSoundId) return;
+
+    const handleMidiMessage = (message: any) => {
+      if (message.type === 'noteon') {
+        // Update the sound with the new MIDI mapping
+        dispatch(updateSound({
+          id: ui.selectedSoundId,
+          updates: {
+            midiMapping: {
+              deviceId: message.deviceId,
+              deviceName: message.deviceName,
+              note: message.note,
+              channel: message.channel,
+            },
+          },
+        }));
+
+        // Update the sound manager
+        if (soundManagerRef.current) {
+          const sound = sounds.find(s => s.id === ui.selectedSoundId);
+          if (sound) {
+            soundManagerRef.current.updateSound(ui.selectedSoundId, {
+              ...sound,
+              midiMapping: {
+                deviceId: message.deviceId,
+                deviceName: message.deviceName,
+                note: message.note,
+                channel: message.channel,
+              },
+            });
+          }
+        }
+
+        // Stop listening and mark as dirty
+        dispatch(stopMidiListening());
+        dispatch(setDirty(true));
+      }
+    };
+
+    midiHandlerRef.current.addListener(handleMidiMessage);
+    return () => {
+      midiHandlerRef.current?.removeListener(handleMidiMessage);
+    };
+  }, [midiHandlerRef.current, ui.isMidiListening, ui.listeningMode, ui.selectedSoundId, ui.isSettingsModalOpen, sounds, dispatch]);
+
   // Handle project operations
   const handleNewProject = async () => {
     if (ui.isDirty) {
@@ -158,8 +206,8 @@ const App: React.FC = () => {
     dispatch(setSounds([]));
     dispatch(setSettings({
       masterVolume: 0.8,
-      defaultFadeInMs: 50,
-      defaultFadeOutMs: 100,
+      defaultFadeInMs: 100,
+      defaultFadeOutMs: 500,
     }));
     dispatch(setCurrentProjectPath(null));
     dispatch(setDirty(false));
@@ -309,25 +357,24 @@ const App: React.FC = () => {
         onStopAll={handleStopAll}
       />
 
-      <div className="flex flex-1 overflow-hidden flex-col">
-        <TabBar />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar
+          midiHandler={midiHandlerRef.current}
+          soundManager={soundManagerRef.current}
+        />
 
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar
-            midiHandler={midiHandlerRef.current}
-            soundManager={soundManagerRef.current}
-          />
-
-          <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <TabBar />
+          <div className="flex-1 overflow-auto p-6">
             <SoundsGrid
               sounds={filteredSounds}
               onRemove={handleRemoveSound}
               soundManager={soundManagerRef.current}
             />
-          </main>
+          </div>
+        </main>
 
-          <ActiveSoundsPanel audioEngine={audioEngineRef.current} />
-        </div>
+        <ActiveSoundsPanel audioEngine={audioEngineRef.current} />
       </div>
 
       <SoundSettingsModal

@@ -3,8 +3,8 @@ import { AppSettings } from '../../shared/types';
 
 const initialState: AppSettings = {
   masterVolume: 0.8,
-  defaultFadeInMs: 50,
-  defaultFadeOutMs: 100,
+  defaultFadeInMs: 100,
+  defaultFadeOutMs: 500,
 };
 
 const settingsSlice = createSlice({

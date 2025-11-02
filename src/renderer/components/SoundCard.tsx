@@ -67,7 +67,7 @@ const SoundCard: React.FC<SoundCardProps> = ({ sound, onRemove, soundManager }) 
 
   const mappingText = sound.midiMapping
     ? `${sound.midiMapping.deviceName}: Ch${sound.midiMapping.channel + 1} Note${sound.midiMapping.note}`
-    : null;
+    : 'none';
 
   return (
     <div
@@ -86,11 +86,11 @@ const SoundCard: React.FC<SoundCardProps> = ({ sound, onRemove, soundManager }) 
           <div>Mode: {sound.settings.playMode}</div>
           <div>Volume: {Math.round(sound.settings.volume * 100)}%</div>
         </div>
-        {mappingText && (
-          <div className="mt-1.5 px-2 py-0.5 bg-dark-800 rounded text-xs text-green-400 truncate">
-            {mappingText}
-          </div>
-        )}
+        <div className={`mt-1.5 px-2 py-0.5 bg-dark-800 rounded text-xs truncate ${
+          sound.midiMapping ? 'text-green-400' : 'text-dark-400'
+        }`}>
+          {mappingText}
+        </div>
       </div>
 
       <div className="flex gap-1 flex-wrap">

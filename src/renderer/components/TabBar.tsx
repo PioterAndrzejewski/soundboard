@@ -73,7 +73,7 @@ const TabBar: React.FC = () => {
   };
 
   return (
-    <div className="bg-dark-700 border-b-2 border-dark-500 px-6 py-2 flex items-center gap-2 overflow-x-auto">
+    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto">
       {tabs.map((tab) => (
         <div
           key={tab.id}
@@ -86,13 +86,13 @@ const TabBar: React.FC = () => {
               e.preventDefault();
               setColorPickerTabId(colorPickerTabId === tab.id ? null : tab.id);
             }}
-            className={`px-4 py-2 rounded-t-lg cursor-pointer transition-all flex items-center gap-2 ${
+            className={`px-3 py-1.5 cursor-pointer transition-all flex items-center gap-2 border-b-2 ${
               activeTabId === tab.id
-                ? 'ring-2 ring-white ring-opacity-30'
-                : 'opacity-70 hover:opacity-100'
+                ? 'border-opacity-100'
+                : 'border-transparent opacity-60 hover:opacity-100'
             }`}
             style={{
-              backgroundColor: tab.color,
+              borderBottomColor: activeTabId === tab.id ? tab.color : 'transparent',
             }}
           >
             {editingTabId === tab.id ? (
@@ -102,18 +102,18 @@ const TabBar: React.FC = () => {
                 onChange={(e) => setEditingName(e.target.value)}
                 onBlur={() => handleRename(tab.id)}
                 onKeyDown={(e) => handleKeyDown(e, tab.id)}
-                className="bg-dark-800 text-dark-50 px-2 py-0.5 rounded text-sm w-24 focus:outline-none focus:ring-2 focus:ring-white"
+                className="bg-dark-700 text-dark-50 px-2 py-0.5 text-xs w-20 focus:outline-none"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="text-sm font-semibold text-white">{tab.name}</span>
+              <span className="text-xs font-medium text-dark-100">{tab.name}</span>
             )}
 
             {tabs.length > 1 && activeTabId === tab.id && (
               <button
                 onClick={(e) => handleDeleteTab(e, tab.id)}
-                className="opacity-0 group-hover:opacity-100 ml-1 text-white hover:text-red-300 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 text-xs text-dark-300 hover:text-red-400 transition-opacity"
                 title="Delete tab"
               >
                 ✕
@@ -123,21 +123,21 @@ const TabBar: React.FC = () => {
 
           {/* Color Picker Dropdown */}
           {colorPickerTabId === tab.id && (
-            <div className="absolute top-full left-0 mt-1 bg-dark-600 border-2 border-dark-500 rounded-lg p-3 z-50 shadow-xl">
-              <div className="text-xs text-dark-200 mb-2 font-semibold">Choose Color</div>
-              <div className="grid grid-cols-4 gap-2">
+            <div className="absolute top-full left-0 mt-1 bg-dark-700 border border-dark-600 rounded p-2 z-50 shadow-lg">
+              <div className="text-xs text-dark-300 mb-1.5">Color</div>
+              <div className="grid grid-cols-4 gap-1.5">
                 {predefinedColors.map((color) => (
                   <button
                     key={color}
                     onClick={() => handleColorChange(tab.id, color)}
-                    className="w-8 h-8 rounded-full border-2 border-dark-400 hover:border-white transition-all hover:scale-110"
+                    className="w-6 h-6 rounded border border-dark-500 hover:border-dark-300 transition-all"
                     style={{ backgroundColor: color }}
                     title={color}
                   />
                 ))}
               </div>
-              <div className="mt-2 pt-2 border-t border-dark-500">
-                <div className="text-xs text-dark-300 mb-1">Double-click to rename</div>
+              <div className="mt-1.5 pt-1.5 border-t border-dark-600">
+                <div className="text-xs text-dark-400">Double-click to rename</div>
               </div>
             </div>
           )}
@@ -147,11 +147,10 @@ const TabBar: React.FC = () => {
       {/* Add Tab Button */}
       <button
         onClick={handleAddTab}
-        className="px-4 py-2 bg-dark-600 hover:bg-dark-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+        className="px-3 py-1.5 hover:bg-dark-700 text-xs text-dark-300 hover:text-dark-100 transition-colors"
         title="Add new tab"
       >
-        <span>+</span>
-        <span>Tab</span>
+        + Tab
       </button>
     </div>
   );
