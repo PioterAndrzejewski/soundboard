@@ -3,6 +3,8 @@ import { UIState } from '../../shared/types';
 
 interface ExtendedUIState extends UIState {
   lastStopAllTrigger: number;
+  isMidiMappingMode: boolean;
+  mappingTarget: 'volume' | 'stopall' | 'sound' | null;
 }
 
 const initialState: ExtendedUIState = {
@@ -13,6 +15,8 @@ const initialState: ExtendedUIState = {
   currentProjectPath: null,
   isDirty: false,
   lastStopAllTrigger: 0,
+  isMidiMappingMode: false,
+  mappingTarget: null,
 };
 
 const uiSlice = createSlice({
@@ -46,6 +50,25 @@ const uiSlice = createSlice({
     triggerStopAll: (state) => {
       state.lastStopAllTrigger = Date.now();
     },
+    toggleMidiMappingMode: (state) => {
+      state.isMidiMappingMode = !state.isMidiMappingMode;
+      if (!state.isMidiMappingMode) {
+        // Exiting mapping mode
+        state.isMidiListening = false;
+        state.listeningMode = 'none';
+        state.mappingTarget = null;
+      }
+    },
+    startMappingTarget: (state, action: PayloadAction<'volume' | 'stopall' | 'sound'>) => {
+      state.mappingTarget = action.payload;
+      state.isMidiListening = true;
+      state.listeningMode = action.payload;
+    },
+    clearMappingTarget: (state) => {
+      state.mappingTarget = null;
+      state.isMidiListening = false;
+      state.listeningMode = 'none';
+    },
   },
 });
 
@@ -58,5 +81,8 @@ export const {
   setCurrentProjectPath,
   setDirty,
   triggerStopAll,
+  toggleMidiMappingMode,
+  startMappingTarget,
+  clearMappingTarget,
 } = uiSlice.actions;
 export default uiSlice.reducer;
