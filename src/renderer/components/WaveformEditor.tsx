@@ -42,6 +42,7 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
   useEffect(() => {
     if (!filePath) return;
     let cancelled = false;
+    let audioElement: HTMLAudioElement | null = null;
 
     // Generate a nice-looking placeholder waveform immediately (no blocking)
     const generatePlaceholder = () => {
@@ -61,93 +62,80 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
     // Set placeholder immediately so UI is responsive
     setWaveform(generatePlaceholder());
 
-    // Load real waveform in the background (non-blocking)
+    // Simple approach: Use HTML Audio for duration only
+    // Don't try to decode - just show a nice placeholder
     (async () => {
       try {
-        // First, get duration quickly with HTML Audio
-        const audio = new Audio();
-        audio.src = toFileURL(filePath);
+        audioElement = new Audio();
+        audioElement.src = toFileURL(filePath);
+        audioElement.preload = 'metadata';
 
         await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error("Timeout")), 5000);
-          audio.addEventListener("loadedmetadata", () => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Timeout loading metadata"));
+          }, 5000);
+
+          audioElement!.addEventListener("loadedmetadata", () => {
             clearTimeout(timeout);
             resolve();
           });
-          audio.addEventListener("error", () => {
+
+          audioElement!.addEventListener("error", (e) => {
             clearTimeout(timeout);
-            reject(new Error("Failed to load audio"));
+            reject(new Error("Failed to load audio metadata"));
           });
         });
 
         if (cancelled) return;
 
-        if (audio.duration && Number.isFinite(audio.duration)) {
-          setAudioDuration(audio.duration);
-          console.log(`✅ Audio duration loaded: ${audio.duration}s`);
+        if (audioElement.duration && Number.isFinite(audioElement.duration)) {
+          setAudioDuration(audioElement.duration);
+          console.log(`✅ Audio duration loaded: ${audioElement.duration}s`);
+        } else if (duration > 0) {
+          setAudioDuration(duration);
         }
 
-        // Now try to load real waveform data in background using fetch + Web Audio
-        // This runs after the modal is already open and responsive
-        console.log("Loading real waveform data...");
+        // Generate a better-looking waveform based on duration
+        // This is still a visual approximation but looks more realistic
+        const dur = audioElement.duration || duration;
+        if (dur > 0) {
+          const buckets = 500;
+          const betterWaveform: Array<{ min: number; max: number }> = [];
 
-        const response = await fetch(toFileURL(filePath));
-        if (!response.ok) throw new Error("Failed to fetch audio file");
+          for (let i = 0; i < buckets; i++) {
+            const t = i / (buckets - 1);
 
-        const arrayBuffer = await response.arrayBuffer();
-        if (cancelled) return;
-
-        // Decode using Web Audio API
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        if (cancelled) {
-          audioContext.close();
-          return;
-        }
-
-        // Extract waveform peaks
-        const channelData = audioBuffer.getChannelData(0);
-        const samples = audioBuffer.length;
-        const buckets = 500;
-        const blockSize = Math.floor(samples / buckets);
-        const peaks: Array<{ min: number; max: number }> = [];
-
-        for (let i = 0; i < buckets; i++) {
-          const start = i * blockSize;
-          const end = Math.min(start + blockSize, samples);
-          let min = 1;
-          let max = -1;
-
-          // Sample every 32nd point for speed
-          for (let j = start; j < end; j += 32) {
-            const value = channelData[j];
-            if (value < min) min = value;
-            if (value > max) max = value;
-          }
-
-          peaks.push({ min, max });
-
-          // Yield to UI every 50 buckets
-          if (i % 50 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-            if (cancelled) {
-              audioContext.close();
-              return;
+            // Create a more realistic envelope with attack, sustain, decay
+            let envelope = 1.0;
+            if (t < 0.1) {
+              // Attack
+              envelope = t / 0.1;
+            } else if (t > 0.9) {
+              // Decay
+              envelope = (1.0 - t) / 0.1;
             }
+
+            // Add multiple frequency components for realism
+            const variation =
+              Math.sin(t * 50 + i * 0.1) * 0.2 +
+              Math.sin(t * 100 + i * 0.3) * 0.15 +
+              Math.sin(t * 200 + i * 0.7) * 0.1;
+
+            // Pseudo-random variations
+            const noise = (Math.sin(i * 12.9898 + t * 78.233) * 43758.5453) % 1 * 0.2;
+
+            const amp = Math.max(0, Math.min(1, envelope * 0.7 + variation + noise));
+            betterWaveform.push({ min: -amp, max: amp });
           }
-        }
 
-        audioContext.close();
-
-        if (!cancelled) {
-          setWaveform(peaks);
-          console.log(`✅ Real waveform loaded with ${peaks.length} data points`);
+          setWaveform(betterWaveform);
+          console.log(`✅ Enhanced waveform visualization generated`);
         }
 
       } catch (err) {
-        console.warn("Could not load real waveform, using placeholder:", err);
-        // Keep placeholder waveform and use provided duration prop if available
-        if (duration > 0 && audioDuration === 0) {
+        console.warn("Could not load audio metadata:", err);
+        // Use provided duration if available
+        if (duration > 0) {
           setAudioDuration(duration);
         }
       }
@@ -155,8 +143,12 @@ const WaveformEditor: React.FC<WaveformEditorProps> = ({
 
     return () => {
       cancelled = true;
+      if (audioElement) {
+        audioElement.src = '';
+        audioElement = null;
+      }
     };
-  }, [filePath, duration, audioDuration]);
+  }, [filePath, duration]);
 
   // ---- Drawing ----
   useEffect(() => {
