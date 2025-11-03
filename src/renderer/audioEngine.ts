@@ -313,6 +313,19 @@ export class AudioEngine {
       }
     }
 
+    // For trigger-stop mode: if already playing, stop it with fade out (toggle behavior)
+    if (sound.settings.playMode === 'trigger-stop') {
+      const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
+        ps => ps.soundId === sound.id
+      );
+      if (alreadyPlaying.length > 0) {
+        console.log(`🔄 Trigger-stop mode: stopping sound with fade out: ${sound.name}`);
+        alreadyPlaying.forEach(ps => this.stopSound(ps.id));
+        // Return early - don't play again (toggle off with fade)
+        return alreadyPlaying[0].id;
+      }
+    }
+
     // For loop mode: if already playing, stop it (toggle off behavior)
     if (sound.settings.playMode === 'loop') {
       const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
@@ -350,8 +363,8 @@ export class AudioEngine {
     const targetVolume = sound.settings.volume * velocityFactor;
     audio.volume = this.calculateVolume(targetVolume);
 
-    // Apply fade in for gate, trigger, and loop modes
-    if ((sound.settings.playMode === 'gate' || sound.settings.playMode === 'trigger' || sound.settings.playMode === 'loop') && sound.settings.fadeInMs > 0) {
+    // Apply fade in for gate, trigger, trigger-stop, and loop modes
+    if ((sound.settings.playMode === 'gate' || sound.settings.playMode === 'trigger' || sound.settings.playMode === 'trigger-stop' || sound.settings.playMode === 'loop') && sound.settings.fadeInMs > 0) {
       audio.volume = 0;
       const fadeSteps = 20;
       const stepTime = sound.settings.fadeInMs / fadeSteps;
@@ -446,8 +459,8 @@ export class AudioEngine {
 
     const { audio, settings } = playingSound;
 
-    // Apply fade out for gate, trigger, and loop modes
-    if ((settings.playMode === 'gate' || settings.playMode === 'trigger' || settings.playMode === 'loop') && settings.fadeOutMs > 0) {
+    // Apply fade out for gate, trigger, trigger-stop, and loop modes
+    if ((settings.playMode === 'gate' || settings.playMode === 'trigger' || settings.playMode === 'trigger-stop' || settings.playMode === 'loop') && settings.fadeOutMs > 0) {
       // Apply fade out
       const fadeSteps = 20;
       const stepTime = settings.fadeOutMs / fadeSteps;
