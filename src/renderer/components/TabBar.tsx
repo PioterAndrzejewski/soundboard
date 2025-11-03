@@ -11,8 +11,6 @@ const TabBar: React.FC = () => {
   const [editingName, setEditingName] = useState('');
   const [settingsModalTabId, setSettingsModalTabId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
-  const [dragOverTabId, setDragOverTabId] = useState<string | null>(null);
 
   // Sort tabs by their order property for display
   const sortedTabs = [...tabs].sort((a, b) => a.order - b.order);
@@ -66,50 +64,34 @@ const TabBar: React.FC = () => {
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, tabId: string) => {
-    setDraggedTabId(tabId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, tabId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverTabId(tabId);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedTabId(null);
-    setDragOverTabId(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetTabId: string) => {
-    e.preventDefault();
-    if (!draggedTabId || draggedTabId === targetTabId) {
-      setDraggedTabId(null);
-      setDragOverTabId(null);
-      return;
-    }
-
-    const draggedIndex = sortedTabs.findIndex(t => t.id === draggedTabId);
-    const targetIndex = sortedTabs.findIndex(t => t.id === targetTabId);
-
-    if (draggedIndex === -1 || targetIndex === -1) return;
-
-    const newTabs = [...sortedTabs];
-    const [draggedTab] = newTabs.splice(draggedIndex, 1);
-    newTabs.splice(targetIndex, 0, draggedTab);
-
-    dispatch(reorderTabs(newTabs));
-    setDraggedTabId(null);
-    setDragOverTabId(null);
-  };
-
   const handleAssignMidiToTab = (tabId: string) => {
     dispatch(startMidiListening({ mode: 'tab', target: tabId }));
   };
 
   const handleRemoveMidiFromTab = (tabId: string) => {
     dispatch(setTabMidiMapping({ tabId, mapping: undefined }));
+  };
+
+  const handleMoveTabLeft = (e: React.MouseEvent, tabId: string) => {
+    e.stopPropagation();
+    const currentIndex = sortedTabs.findIndex(t => t.id === tabId);
+    if (currentIndex > 0) {
+      const newTabs = [...sortedTabs];
+      const [tab] = newTabs.splice(currentIndex, 1);
+      newTabs.splice(currentIndex - 1, 0, tab);
+      dispatch(reorderTabs(newTabs));
+    }
+  };
+
+  const handleMoveTabRight = (e: React.MouseEvent, tabId: string) => {
+    e.stopPropagation();
+    const currentIndex = sortedTabs.findIndex(t => t.id === tabId);
+    if (currentIndex < sortedTabs.length - 1) {
+      const newTabs = [...sortedTabs];
+      const [tab] = newTabs.splice(currentIndex, 1);
+      newTabs.splice(currentIndex + 1, 0, tab);
+      dispatch(reorderTabs(newTabs));
+    }
   };
 
   const settingsTab = settingsModalTabId ? sortedTabs.find(t => t.id === settingsModalTabId) : null;
@@ -121,11 +103,6 @@ const TabBar: React.FC = () => {
           <div
             key={tab.id}
             className="relative group"
-            draggable
-            onDragStart={(e) => handleDragStart(e, tab.id)}
-            onDragOver={(e) => handleDragOver(e, tab.id)}
-            onDragEnd={handleDragEnd}
-            onDrop={(e) => handleDrop(e, tab.id)}
           >
             <div
               onClick={() => handleTabClick(tab.id)}
@@ -134,23 +111,26 @@ const TabBar: React.FC = () => {
                 setSettingsModalTabId(tab.id);
                 setEditingName(tab.name);
               }}
-              className={`px-3 py-1.5 cursor-move transition-all flex items-center gap-2 border-b-2 ${
+              className={`px-3 py-1.5 cursor-pointer transition-all flex items-center gap-2 border-b-2 ${
                 activeTabId === tab.id
                   ? 'border-opacity-100'
                   : 'border-transparent opacity-60 hover:opacity-100'
-              } ${
-                dragOverTabId === tab.id && draggedTabId !== tab.id
-                  ? 'bg-dark-700'
-                  : ''
-              } ${
-                draggedTabId === tab.id
-                  ? 'opacity-50'
-                  : ''
               }`}
               style={{
                 borderBottomColor: activeTabId === tab.id ? tab.color : 'transparent',
               }}
             >
+              {/* Move left button */}
+              {activeTabId === tab.id && sortedTabs.findIndex(t => t.id === tab.id) > 0 && (
+                <button
+                  onClick={(e) => handleMoveTabLeft(e, tab.id)}
+                  className="text-xs text-dark-300 hover:text-dark-100 transition-colors"
+                  title="Move tab left"
+                >
+                  ◀
+                </button>
+              )}
+
               <span className="text-xs font-medium text-dark-100">{tab.name}</span>
 
               {/* MIDI indicator */}
@@ -158,6 +138,17 @@ const TabBar: React.FC = () => {
                 <span className="text-[8px] text-green-400" title={`MIDI: Note ${tab.midiMapping.note}`}>
                   🎹
                 </span>
+              )}
+
+              {/* Move right button */}
+              {activeTabId === tab.id && sortedTabs.findIndex(t => t.id === tab.id) < sortedTabs.length - 1 && (
+                <button
+                  onClick={(e) => handleMoveTabRight(e, tab.id)}
+                  className="text-xs text-dark-300 hover:text-dark-100 transition-colors"
+                  title="Move tab right"
+                >
+                  ▶
+                </button>
               )}
 
               {sortedTabs.length > 1 && activeTabId === tab.id && (
