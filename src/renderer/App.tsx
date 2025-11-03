@@ -366,36 +366,46 @@ const App: React.FC = () => {
     if (!ui.selectedSoundId) return;
 
     const handleMidiMessage = (message: any) => {
-      if (message.type === "noteon") {
+      // Find the sound to determine if it's in an APC RIGHT layout (knob)
+      const sound = sounds.find((s) => s.id === ui.selectedSoundId);
+      const soundTab = tabs.find(t => t.id === sound?.tabId);
+      const isAPCRightKnob = soundTab?.layoutType === 'apc-right' &&
+                             sound?.slotPosition?.row !== undefined &&
+                             sound.slotPosition.row >= 0 &&
+                             sound.slotPosition.row <= 7;
+
+      // For APC RIGHT knobs, use CC messages; for others, use note messages
+      const shouldAcceptMessage = isAPCRightKnob ? message.type === "cc" : message.type === "noteon";
+
+      if (shouldAcceptMessage) {
+        const midiMapping = isAPCRightKnob
+          ? {
+              deviceId: message.deviceId,
+              deviceName: message.deviceName,
+              ccNumber: message.ccNumber,
+              channel: message.channel,
+            }
+          : {
+              deviceId: message.deviceId,
+              deviceName: message.deviceName,
+              note: message.note,
+              channel: message.channel,
+            };
+
         // Update the sound with the new MIDI mapping
         dispatch(
           updateSound({
             id: ui.selectedSoundId || "",
-            updates: {
-              midiMapping: {
-                deviceId: message.deviceId,
-                deviceName: message.deviceName,
-                note: message.note,
-                channel: message.channel,
-              },
-            },
+            updates: { midiMapping },
           })
         );
 
         // Update the sound manager
-        if (soundManagerRef.current) {
-          const sound = sounds.find((s) => s.id === ui.selectedSoundId);
-          if (sound) {
-            soundManagerRef.current.updateSound(ui.selectedSoundId || "", {
-              ...sound,
-              midiMapping: {
-                deviceId: message.deviceId,
-                deviceName: message.deviceName,
-                note: message.note,
-                channel: message.channel,
-              },
-            });
-          }
+        if (soundManagerRef.current && sound) {
+          soundManagerRef.current.updateSound(ui.selectedSoundId || "", {
+            ...sound,
+            midiMapping,
+          });
         }
 
         // Stop listening and mark as dirty
@@ -416,6 +426,7 @@ const App: React.FC = () => {
     ui.isSettingsModalOpen,
     ui.tabListeningTarget,
     sounds,
+    tabs,
     dispatch,
   ]);
 
