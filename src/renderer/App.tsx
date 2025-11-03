@@ -28,6 +28,7 @@ import Header from "./components/Header";
 import TabBar from "./components/TabBar";
 import SoundsGrid from "./components/SoundsGrid";
 import APCMiniLayout from "./components/APCMiniLayout";
+import APCKey25Layout from "./components/APCKey25Layout";
 import SoundSettingsModal from "./components/SoundSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
@@ -702,30 +703,56 @@ const App: React.FC = () => {
         <main className="flex-1 flex flex-col">
           <TabBar />
           <div className="flex-1 overflow-auto p-3">
-            {tabs.find(t => t.id === activeTabId)?.layoutType === 'apc-mini' ? (
-              <APCMiniLayout
-                tabId={activeTabId || ''}
-                sounds={filteredSounds}
-                onAssignSound={handleAssignSoundToSlot}
-                onPlaySound={handlePlaySound}
-                onRemoveSound={handleRemoveSound}
-                onEditSound={(soundId) => {
-                  dispatch(setSelectedSound(soundId));
-                  dispatch(openSettingsModal());
-                }}
-                onStartMidiMapping={(soundId) => {
-                  dispatch(setSelectedSound(soundId));
-                  dispatch(startMidiListening('sound'));
-                }}
-              />
-            ) : (
-              <SoundsGrid
-                sounds={filteredSounds}
-                onRemove={handleRemoveSound}
-                soundManager={soundManagerRef.current}
-                onAddSound={handleAddSound}
-              />
-            )}
+            {(() => {
+              const currentLayout = tabs.find(t => t.id === activeTabId)?.layoutType;
+
+              if (currentLayout === 'apc-mini') {
+                return (
+                  <APCMiniLayout
+                    tabId={activeTabId || ''}
+                    sounds={filteredSounds}
+                    onAssignSound={handleAssignSoundToSlot}
+                    onPlaySound={handlePlaySound}
+                    onRemoveSound={handleRemoveSound}
+                    onEditSound={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(openSettingsModal());
+                    }}
+                    onStartMidiMapping={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(startMidiListening('sound'));
+                    }}
+                  />
+                );
+              } else if (currentLayout === 'apc-key25') {
+                return (
+                  <APCKey25Layout
+                    tabId={activeTabId || ''}
+                    sounds={filteredSounds}
+                    onAssignSound={handleAssignSoundToSlot}
+                    onPlaySound={handlePlaySound}
+                    onRemoveSound={handleRemoveSound}
+                    onEditSound={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(openSettingsModal());
+                    }}
+                    onStartMidiMapping={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(startMidiListening('sound'));
+                    }}
+                  />
+                );
+              } else {
+                return (
+                  <SoundsGrid
+                    sounds={filteredSounds}
+                    onRemove={handleRemoveSound}
+                    soundManager={soundManagerRef.current}
+                    onAddSound={handleAddSound}
+                  />
+                );
+              }
+            })()}
           </div>
         </main>
 

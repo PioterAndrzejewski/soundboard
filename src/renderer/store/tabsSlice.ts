@@ -28,9 +28,15 @@ const tabsSlice = createSlice({
   reducers: {
     addTab: (state, action: PayloadAction<TabLayoutType | undefined>) => {
       const layoutType = action.payload || 'free';
+      let tabName = `Tab ${state.tabs.length + 1}`;
+      if (layoutType === 'apc-mini') {
+        tabName = 'APC MINI';
+      } else if (layoutType === 'apc-key25') {
+        tabName = 'APC KEY25';
+      }
       const newTab: Tab = {
         id: uuidv4(),
-        name: layoutType === 'apc-mini' ? 'APC MINI' : `Tab ${state.tabs.length + 1}`,
+        name: tabName,
         color: '#6b7280', // gray
         order: state.tabs.length,
         layoutType,

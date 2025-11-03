@@ -26,7 +26,7 @@ const TabBar: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  const handleCreateTab = (layoutType: 'free' | 'apc-mini') => {
+  const handleCreateTab = (layoutType: 'free' | 'apc-mini' | 'apc-key25') => {
     dispatch(addTab(layoutType));
     setShowCreateModal(false);
   };
@@ -114,11 +114,11 @@ const TabBar: React.FC = () => {
       {/* Create Tab Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-dark-700 rounded-lg p-6 w-[600px] border border-dark-600">
+          <div className="bg-dark-700 rounded-lg p-6 w-[800px] border border-dark-600">
             <h2 className="text-lg font-semibold mb-4">Create New Tab</h2>
             <p className="text-sm text-dark-300 mb-6">Choose a layout for your new tab:</p>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-6">
               {/* Empty Page Option */}
               <button
                 onClick={() => handleCreateTab('free')}
@@ -171,6 +171,42 @@ const TabBar: React.FC = () => {
                     {/* Square button */}
                     <div style={{ width: '12.5%' }}>
                       <div className="aspect-[2.5/1] bg-red-600" />
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* APC KEY25 Layout Option */}
+              <button
+                onClick={() => handleCreateTab('apc-key25')}
+                className="p-4 bg-dark-600 hover:bg-dark-500 border-2 border-dark-500 hover:border-blue-500 rounded-lg transition-all text-left"
+              >
+                <div className="text-base font-medium mb-2">APC KEY25 Layout</div>
+                <div className="text-xs text-dark-300 mb-3">
+                  25 piano keys (C1-C3). Matches piano keyboard layout.
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {/* Piano keys preview */}
+                  <div className="relative h-16">
+                    {/* White keys */}
+                    <div className="flex gap-[1px] h-full">
+                      {[...Array(15)].map((_, i) => (
+                        <div key={`w-${i}`} className="flex-1 bg-gray-300 border border-dark-400" />
+                      ))}
+                    </div>
+                    {/* Black keys positioned on top */}
+                    <div className="absolute top-0 left-0 right-0 flex h-10 pointer-events-none">
+                      {[...Array(15)].map((_, i) => {
+                        // Black keys appear at positions: after 1st, 2nd, 4th, 5th, 6th white keys, then repeat
+                        const showBlack = [0, 1, 3, 4, 5, 7, 8, 10, 11, 12].includes(i);
+                        return (
+                          <div key={`b-${i}`} className="flex-1 relative">
+                            {showBlack && (
+                              <div className="absolute right-[-25%] w-[50%] h-full bg-dark-900 border border-dark-600" />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
