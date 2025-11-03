@@ -81,10 +81,10 @@ const tabsSlice = createSlice({
       state.activeTabId = action.payload;
     },
     reorderTabs: (state, action: PayloadAction<Tab[]>) => {
-      state.tabs = action.payload;
-      // Update order property based on array position
-      state.tabs.forEach((tab, index) => {
-        tab.order = index;
+      // Clear the array and repopulate it with updated order
+      state.tabs.splice(0, state.tabs.length);
+      action.payload.forEach((tab, index) => {
+        state.tabs.push({ ...tab, order: index });
       });
     },
     setTabs: (state, action: PayloadAction<Tab[]>) => {
