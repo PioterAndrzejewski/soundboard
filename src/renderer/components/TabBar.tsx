@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addTab, removeTab, renameTab, setTabColor, setActiveTab } from '../store/tabsSlice';
 import { reassignSoundsTab } from '../store/soundsSlice';
@@ -9,22 +9,7 @@ const TabBar: React.FC = () => {
   const activeTabId = useAppSelector(state => state.tabs.activeTabId);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [colorPickerTabId, setColorPickerTabId] = useState<string | null>(null);
-
-  // Close color picker when clicking outside
-  useEffect(() => {
-    if (!colorPickerTabId) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.color-picker-container')) {
-        setColorPickerTabId(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [colorPickerTabId]);
+  const [settingsModalTabId, setSettingsModalTabId] = useState<string | null>(null);
 
   const predefinedColors = [
     '#3b82f6', // blue
@@ -45,31 +30,14 @@ const TabBar: React.FC = () => {
     dispatch(setActiveTab(tabId));
   };
 
-  const handleDoubleClick = (tab: { id: string; name: string }) => {
-    setEditingTabId(tab.id);
-    setEditingName(tab.name);
-  };
-
-  const handleRename = (tabId: string) => {
-    if (editingName.trim()) {
-      dispatch(renameTab({ tabId, name: editingName.trim() }));
-    }
-    setEditingTabId(null);
-    setEditingName('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent, tabId: string) => {
-    if (e.key === 'Enter') {
-      handleRename(tabId);
-    } else if (e.key === 'Escape') {
-      setEditingTabId(null);
-      setEditingName('');
-    }
-  };
-
   const handleColorChange = (tabId: string, color: string) => {
     dispatch(setTabColor({ tabId, color }));
-    setColorPickerTabId(null);
+  };
+
+  const handleRenameInModal = (tabId: string, newName: string) => {
+    if (newName.trim()) {
+      dispatch(renameTab({ tabId, name: newName.trim() }));
+    }
   };
 
   const handleDeleteTab = (e: React.MouseEvent, tabId: string) => {
@@ -87,88 +55,121 @@ const TabBar: React.FC = () => {
     }
   };
 
+  const settingsTab = settingsModalTabId ? tabs.find(t => t.id === settingsModalTabId) : null;
+
   return (
-    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto overflow-y-visible relative z-20">
-      {tabs.map((tab) => (
-        <div
-          key={tab.id}
-          className="relative"
-          style={{ zIndex: colorPickerTabId === tab.id ? 9999 : 'auto' }}
-        >
+    <>
+      <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto relative z-20">
+        {tabs.map((tab) => (
           <div
-            onClick={() => handleTabClick(tab.id)}
-            onDoubleClick={() => handleDoubleClick(tab)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setColorPickerTabId(colorPickerTabId === tab.id ? null : tab.id);
-            }}
-            className={`px-3 py-1.5 cursor-pointer transition-all flex items-center gap-2 border-b-2 ${
-              activeTabId === tab.id
-                ? 'border-opacity-100'
-                : 'border-transparent opacity-60 hover:opacity-100'
-            }`}
-            style={{
-              borderBottomColor: activeTabId === tab.id ? tab.color : 'transparent',
-            }}
+            key={tab.id}
+            className="relative group"
           >
-            {editingTabId === tab.id ? (
+            <div
+              onClick={() => handleTabClick(tab.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setSettingsModalTabId(tab.id);
+                setEditingName(tab.name);
+              }}
+              className={`px-3 py-1.5 cursor-pointer transition-all flex items-center gap-2 border-b-2 ${
+                activeTabId === tab.id
+                  ? 'border-opacity-100'
+                  : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+              style={{
+                borderBottomColor: activeTabId === tab.id ? tab.color : 'transparent',
+              }}
+            >
+              <span className="text-xs font-medium text-dark-100">{tab.name}</span>
+
+              {tabs.length > 1 && activeTabId === tab.id && (
+                <button
+                  onClick={(e) => handleDeleteTab(e, tab.id)}
+                  className="opacity-0 group-hover:opacity-100 text-xs text-dark-300 hover:text-red-400 transition-opacity"
+                  title="Delete tab"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Add Tab Button */}
+        <button
+          onClick={handleAddTab}
+          className="px-3 py-1.5 hover:bg-dark-700 text-xs text-dark-300 hover:text-dark-100 transition-colors"
+          title="Add new tab"
+        >
+          + Tab
+        </button>
+      </div>
+
+      {/* Tab Settings Modal */}
+      {settingsTab && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-dark-700 rounded-lg p-6 w-96 border border-dark-600">
+            <h2 className="text-lg font-semibold mb-4">Tab Settings</h2>
+
+            {/* Tab Name */}
+            <div className="mb-4">
+              <label className="block text-sm text-dark-200 mb-2">Tab Name</label>
               <input
                 type="text"
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
-                onBlur={() => handleRename(tab.id)}
-                onKeyDown={(e) => handleKeyDown(e, tab.id)}
-                className="bg-dark-700 text-dark-50 px-2 py-0.5 text-xs w-20 focus:outline-none"
+                className="w-full px-3 py-2 bg-dark-600 border border-dark-500 rounded text-dark-50 focus:outline-none focus:border-blue-500"
                 autoFocus
-                onClick={(e) => e.stopPropagation()}
               />
-            ) : (
-              <span className="text-xs font-medium text-dark-100">{tab.name}</span>
-            )}
+            </div>
 
-            {tabs.length > 1 && activeTabId === tab.id && (
-              <button
-                onClick={(e) => handleDeleteTab(e, tab.id)}
-                className="opacity-0 group-hover:opacity-100 text-xs text-dark-300 hover:text-red-400 transition-opacity"
-                title="Delete tab"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Color Picker Dropdown */}
-          {colorPickerTabId === tab.id && (
-            <div className="color-picker-container absolute top-full left-0 mt-1 bg-dark-700 border border-dark-600 rounded p-2 shadow-lg" style={{ zIndex: 9999 }}>
-              <div className="text-xs text-dark-300 mb-1.5">Color</div>
-              <div className="grid grid-cols-4 gap-1.5">
+            {/* Color Selection */}
+            <div className="mb-6">
+              <label className="block text-sm text-dark-200 mb-2">Tab Color</label>
+              <div className="grid grid-cols-8 gap-2">
                 {predefinedColors.map((color) => (
                   <button
                     key={color}
-                    onClick={() => handleColorChange(tab.id, color)}
-                    className="w-6 h-6 rounded border border-dark-500 hover:border-dark-300 transition-all"
+                    onClick={() => handleColorChange(settingsTab.id, color)}
+                    className={`w-8 h-8 rounded border-2 transition-all ${
+                      settingsTab.color === color
+                        ? 'border-white scale-110'
+                        : 'border-dark-500 hover:border-dark-300'
+                    }`}
                     style={{ backgroundColor: color }}
                     title={color}
                   />
                 ))}
               </div>
-              <div className="mt-1.5 pt-1.5 border-t border-dark-600">
-                <div className="text-xs text-dark-400">Double-click to rename</div>
-              </div>
             </div>
-          )}
-        </div>
-      ))}
 
-      {/* Add Tab Button */}
-      <button
-        onClick={handleAddTab}
-        className="px-3 py-1.5 hover:bg-dark-700 text-xs text-dark-300 hover:text-dark-100 transition-colors"
-        title="Add new tab"
-      >
-        + Tab
-      </button>
-    </div>
+            {/* Action Buttons */}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setSettingsModalTabId(null);
+                  setEditingName('');
+                }}
+                className="px-4 py-2 bg-dark-600 hover:bg-dark-500 rounded text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  handleRenameInModal(settingsTab.id, editingName);
+                  setSettingsModalTabId(null);
+                  setEditingName('');
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
