@@ -132,7 +132,7 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
 
       {/* Vertical slider */}
       <div
-        className={`relative w-8 h-32 rounded bg-dark-600 border transition-all ${
+        className={`relative w-8 h-24 rounded bg-dark-600 border transition-all ${
           isBeingMapped
             ? 'border-green-500 animate-pulse'
             : isMappingMode
@@ -284,8 +284,8 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ midiHandler }) => {
   ];
 
   return (
-    <div className="bg-dark-700 border-t-2 border-dark-500 p-4">
-      <div className="flex items-center justify-between gap-6">
+    <div className="bg-dark-700 border-t-2 border-dark-500 p-2">
+      <div className="flex items-center justify-between gap-4">
         {/* Left side - Effects sliders */}
         <div className="flex-1 flex items-center justify-between">
           {knobs.map((knob) => (
@@ -307,9 +307,9 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ midiHandler }) => {
         </div>
 
         {/* Right side - Master Volume */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <section
-            className={`p-3 rounded transition-all duration-300 relative min-w-[300px] ${
+            className={`p-2 rounded transition-all duration-300 relative min-w-[280px] ${
               volumeFlash ? 'bg-blue-900 bg-opacity-30 ring-2 ring-blue-500' : ''
             } ${
               ui.isMidiMappingMode ? 'ring-2 ring-purple-500 hover:ring-purple-400 cursor-pointer' : ''
@@ -323,8 +323,8 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ midiHandler }) => {
             }}
             title={ui.isMidiMappingMode ? 'Click to map MIDI knob' : volumeHasMappingTitle}
           >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-dark-200 uppercase">Master Volume</h3>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[11px] font-semibold text-dark-200 uppercase">Master Volume</h3>
               <span className={`text-sm transition-opacity ${settings.volumeMapping ? 'opacity-100 text-green-400' : 'opacity-30 text-gray-400'}`}>
                 🎹
               </span>

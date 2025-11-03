@@ -299,7 +299,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
   };
 
   return (
-    <div className="p-4 h-full flex items-start justify-center overflow-auto">
+    <div className="p-1 h-full flex items-start justify-center overflow-auto">
       <div className="flex flex-col gap-1">
         {/* Top section: 8x8 grid + side column */}
         <div className="flex gap-1">
