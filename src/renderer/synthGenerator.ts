@@ -34,11 +34,11 @@ export function noteNameToMidiNote(noteName: string): number {
   return (octave + 1) * 12 + noteOffset;
 }
 
-// Generate a synthetic audio buffer for a specific note with electronic/house character
+// Generate a synthetic audio buffer for a specific note with piano-like character
 export async function generateSynthSound(
   noteName: string,
-  duration: number = 2.0,
-  waveType: 'house' | 'bass' | 'lead' | 'pluck' = 'house'
+  duration: number = 3.0,
+  waveType: 'piano' = 'piano'
 ): Promise<AudioBuffer> {
   const audioContext = new AudioContext();
   const sampleRate = audioContext.sampleRate;
@@ -46,75 +46,69 @@ export async function generateSynthSound(
   const buffer = audioContext.createBuffer(2, length, sampleRate);
 
   const midiNote = noteNameToMidiNote(noteName);
-  const frequency = midiNoteToFrequency(midiNote);
+  // Shift up one octave (+12 semitones)
+  const frequency = midiNoteToFrequency(midiNote + 12);
 
   const leftChannel = buffer.getChannelData(0);
   const rightChannel = buffer.getChannelData(1);
 
-  // Generate waveform based on type
+  // Generate piano-like waveform with rich harmonics
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
     const phase = 2 * Math.PI * frequency * t;
 
     let sample = 0;
 
-    switch (waveType) {
-      case 'house':
-        // House bass: sine wave with sub-bass + slight harmonics
-        sample = Math.sin(phase) * 0.6; // Fundamental
-        sample += Math.sin(phase * 2) * 0.2; // 2nd harmonic
-        sample += Math.sin(phase * 0.5) * 0.3; // Sub-bass
-        break;
+    // Piano-like tone with carefully balanced harmonics
+    // Fundamental and harmonics with decreasing amplitude
+    sample = Math.sin(phase) * 0.4;                    // Fundamental
+    sample += Math.sin(phase * 2) * 0.3;               // 2nd harmonic (octave)
+    sample += Math.sin(phase * 3) * 0.15;              // 3rd harmonic (fifth)
+    sample += Math.sin(phase * 4) * 0.1;               // 4th harmonic
+    sample += Math.sin(phase * 5) * 0.06;              // 5th harmonic
+    sample += Math.sin(phase * 6) * 0.04;              // 6th harmonic
+    sample += Math.sin(phase * 7) * 0.025;             // 7th harmonic
+    sample += Math.sin(phase * 8) * 0.015;             // 8th harmonic
 
-      case 'bass':
-        // Deep bass: primarily sine with low-pass character
-        sample = Math.sin(phase) * 0.7;
-        sample += Math.sin(phase * 0.5) * 0.4;
-        break;
+    // Add slight inharmonicity for more realistic piano sound
+    const inharmonic1 = Math.sin(phase * 2.01) * 0.05;
+    const inharmonic2 = Math.sin(phase * 3.02) * 0.03;
+    sample += inharmonic1 + inharmonic2;
 
-      case 'lead':
-        // Lead synth: sawtooth-like with more harmonics
-        sample = Math.sin(phase) * 0.5;
-        sample += Math.sin(phase * 2) * 0.25;
-        sample += Math.sin(phase * 3) * 0.15;
-        sample += Math.sin(phase * 4) * 0.1;
-        break;
-
-      case 'pluck':
-        // Pluck: decaying sine with attack
-        const pluckDecay = Math.exp(-t * 3);
-        sample = Math.sin(phase) * pluckDecay * 0.8;
-        sample += Math.sin(phase * 2) * pluckDecay * 0.3;
-        break;
-    }
-
-    // Apply ADSR envelope
-    const attackTime = 0.01;
-    const decayTime = 0.1;
-    const sustainLevel = 0.7;
-    const releaseTime = 0.3;
+    // Piano-style ADSR envelope
+    const attackTime = 0.005;      // Very fast attack (5ms)
+    const decayTime = 0.15;        // Quick decay
+    const sustainLevel = 0.4;      // Lower sustain
+    const releaseTime = 0.8;       // Long release for piano resonance
 
     let envelope = 1.0;
     if (t < attackTime) {
-      // Attack
-      envelope = t / attackTime;
+      // Fast attack with slight curve
+      const attackProgress = t / attackTime;
+      envelope = attackProgress * attackProgress; // Quadratic curve
     } else if (t < attackTime + decayTime) {
-      // Decay
+      // Decay to sustain
       const decayProgress = (t - attackTime) / decayTime;
       envelope = 1.0 - (1.0 - sustainLevel) * decayProgress;
     } else if (t < duration - releaseTime) {
-      // Sustain
-      envelope = sustainLevel;
+      // Sustain with slow natural decay
+      const sustainTime = t - (attackTime + decayTime);
+      envelope = sustainLevel * Math.exp(-sustainTime * 0.3);
     } else {
       // Release
       const releaseProgress = (t - (duration - releaseTime)) / releaseTime;
-      envelope = sustainLevel * (1.0 - releaseProgress);
+      const releaseEnvelope = sustainLevel * Math.exp(-(duration - releaseTime - attackTime - decayTime) * 0.3);
+      envelope = releaseEnvelope * (1.0 - releaseProgress * releaseProgress); // Quadratic release
     }
+
+    // Apply velocity-sensitive brightness (more harmonics at start)
+    const brightnessEnvelope = Math.exp(-t * 2.0);
+    sample = sample * (1.0 - brightnessEnvelope * 0.3);
 
     sample *= envelope;
 
     // Normalize
-    sample = Math.max(-1, Math.min(1, sample));
+    sample = Math.max(-1, Math.min(1, sample * 0.7)); // Reduce overall volume slightly
 
     leftChannel[i] = sample;
     rightChannel[i] = sample;
@@ -177,21 +171,8 @@ export function audioBufferToWav(buffer: AudioBuffer): Blob {
 
 // Generate and save synth sound for a piano key
 export async function generateAndSaveSynthSound(noteName: string): Promise<string> {
-  // Determine wave type based on note range
-  const midiNote = noteNameToMidiNote(noteName);
-  let waveType: 'house' | 'bass' | 'lead' | 'pluck' = 'house';
-
-  if (midiNote < 36) {
-    waveType = 'bass'; // Very low notes
-  } else if (midiNote < 60) {
-    waveType = 'house'; // Mid-low notes
-  } else if (midiNote < 72) {
-    waveType = 'pluck'; // Mid notes
-  } else {
-    waveType = 'lead'; // High notes
-  }
-
-  const buffer = await generateSynthSound(noteName, 2.0, waveType);
+  // Generate piano sound (all notes use piano wave type)
+  const buffer = await generateSynthSound(noteName, 3.0, 'piano');
   const wavBlob = audioBufferToWav(buffer);
 
   // Create a temporary file path in the system temp directory
