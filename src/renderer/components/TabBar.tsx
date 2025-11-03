@@ -73,11 +73,11 @@ const TabBar: React.FC = () => {
   };
 
   return (
-    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto relative z-10">
+    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto relative z-20">
       {tabs.map((tab) => (
         <div
           key={tab.id}
-          className="relative group"
+          className="relative group z-30"
         >
           <div
             onClick={() => handleTabClick(tab.id)}
@@ -123,7 +123,7 @@ const TabBar: React.FC = () => {
 
           {/* Color Picker Dropdown */}
           {colorPickerTabId === tab.id && (
-            <div className="absolute top-full left-0 mt-1 bg-dark-700 border border-dark-600 rounded p-2 z-50 shadow-lg">
+            <div className="absolute top-full left-0 mt-1 bg-dark-700 border border-dark-600 rounded p-2 shadow-lg" style={{ zIndex: 9999 }}>
               <div className="text-xs text-dark-300 mb-1.5">Color</div>
               <div className="grid grid-cols-4 gap-1.5">
                 {predefinedColors.map((color) => (
