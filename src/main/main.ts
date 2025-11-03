@@ -123,6 +123,9 @@ function setupIpcHandlers() {
     }
 
     await projectManager.saveProject(project, targetPath);
+    storageManager.setLastProjectPath(targetPath);
+    // Clear auto-save when manually saving
+    storageManager.clearAutoSave();
     return targetPath;
   });
 
@@ -143,6 +146,9 @@ function setupIpcHandlers() {
     }
 
     await projectManager.saveProject(project, result.filePath);
+    storageManager.setLastProjectPath(result.filePath);
+    // Clear auto-save when manually saving
+    storageManager.clearAutoSave();
     return result.filePath;
   });
 
@@ -164,12 +170,50 @@ function setupIpcHandlers() {
 
     const filePath = result.filePaths[0];
     const project = await projectManager.loadProject(filePath);
+    storageManager.setLastProjectPath(filePath);
+    // Clear auto-save when loading a new project
+    storageManager.clearAutoSave();
 
+    return { project, filePath };
+  });
+
+  ipcMain.handle(IpcChannel.LOAD_PROJECT_BY_PATH, async (event, filePath: string) => {
+    const project = await projectManager.loadProject(filePath);
+    storageManager.setLastProjectPath(filePath);
     return { project, filePath };
   });
 
   ipcMain.handle(IpcChannel.GET_RECENT_PROJECTS, async () => {
     return projectManager.getRecentProjects();
+  });
+
+  // Last project path management
+  ipcMain.handle(IpcChannel.GET_LAST_PROJECT_PATH, async () => {
+    return storageManager.getLastProjectPath();
+  });
+
+  ipcMain.handle(IpcChannel.SET_LAST_PROJECT_PATH, async (event, filePath: string) => {
+    storageManager.setLastProjectPath(filePath);
+    return { success: true };
+  });
+
+  // Auto-save management
+  ipcMain.handle(IpcChannel.SAVE_AUTO_SAVE, async (event, project: Project) => {
+    storageManager.saveAutoSave(project);
+    return { success: true };
+  });
+
+  ipcMain.handle(IpcChannel.GET_AUTO_SAVE, async () => {
+    return storageManager.getAutoSave();
+  });
+
+  ipcMain.handle(IpcChannel.CLEAR_AUTO_SAVE, async () => {
+    storageManager.clearAutoSave();
+    return { success: true };
+  });
+
+  ipcMain.handle(IpcChannel.HAS_AUTO_SAVE, async () => {
+    return storageManager.hasAutoSave();
   });
 
   // Audio file reading

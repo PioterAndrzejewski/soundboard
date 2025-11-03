@@ -11,6 +11,7 @@ interface HeaderProps {
   onSaveAs: () => void;
   onLoad: () => void;
   onAddSound: () => void;
+  onRevertAutoSave?: () => void;
   midiHandler?: any;
 }
 
@@ -22,6 +23,7 @@ const Header: React.FC<HeaderProps> = ({
   onSaveAs,
   onLoad,
   onAddSound,
+  onRevertAutoSave,
   midiHandler,
 }) => {
   const dispatch = useAppDispatch();
@@ -33,6 +35,8 @@ const Header: React.FC<HeaderProps> = ({
     MediaDeviceInfo[]
   >([]);
   const [midiDevices, setMidiDevices] = useState<any[]>([]);
+  const [hasAutoSave, setHasAutoSave] = useState(false);
+  const [autoSaveTimestamp, setAutoSaveTimestamp] = useState<string | null>(null);
   const ui = useAppSelector((state) => state.ui);
   const settings = useAppSelector((state) => state.settings);
 
@@ -59,6 +63,30 @@ const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const [showFileMenu, setShowFileMenu] = useState(false);
+
+  // Check for auto-save on mount and when dirty state changes
+  useEffect(() => {
+    const checkAutoSave = async () => {
+      try {
+        const autoSaveData = await window.electronAPI.getAutoSave();
+        if (autoSaveData) {
+          setHasAutoSave(true);
+          setAutoSaveTimestamp(autoSaveData.timestamp);
+        } else {
+          setHasAutoSave(false);
+          setAutoSaveTimestamp(null);
+        }
+      } catch (error) {
+        console.error("Failed to check auto-save:", error);
+      }
+    };
+
+    checkAutoSave();
+    // Check periodically
+    const interval = setInterval(checkAutoSave, 10000); // Every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [isDirty]);
 
   // Close file menu when clicking outside
   useEffect(() => {
@@ -150,6 +178,17 @@ const Header: React.FC<HeaderProps> = ({
           {projectName}
           {isDirty && " *"}
         </span>
+
+        {/* Auto-save revert button */}
+        {hasAutoSave && onRevertAutoSave && (
+          <button
+            onClick={onRevertAutoSave}
+            className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded text-sm transition-colors flex items-center gap-1"
+            title={`Revert to auto-save from ${autoSaveTimestamp ? new Date(autoSaveTimestamp).toLocaleTimeString() : 'earlier'}`}
+          >
+            ⟲ Revert
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -232,16 +271,10 @@ const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        <button
-          onClick={onAddSound}
-          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
-        >
-          Add Sound
-        </button>
         {/* MIDI Mapping Mode Toggle - Icon Only */}
         <button
           onClick={() => dispatch(toggleMidiMappingMode())}
-          className={`px-3 py-1.5 rounded text-lg transition-all ${
+          className={`px-3 py-1.5 rounded text-sm transition-all ${
             ui.isMidiMappingMode
               ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
               : "bg-dark-500 hover:bg-dark-400"
@@ -253,6 +286,13 @@ const Header: React.FC<HeaderProps> = ({
           }
         >
           🎹
+        </button>
+
+        <button
+          onClick={onAddSound}
+          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
+        >
+          Add Sound
         </button>
       </div>
     </header>

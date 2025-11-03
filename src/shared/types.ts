@@ -165,5 +165,14 @@ export enum IpcChannel {
   SAVE_PROJECT = 'save-project',
   SAVE_PROJECT_AS = 'save-project-as',
   LOAD_PROJECT = 'load-project',
+  LOAD_PROJECT_BY_PATH = 'load-project-by-path',
   GET_RECENT_PROJECTS = 'get-recent-projects',
+
+  // Auto-save and last project
+  GET_LAST_PROJECT_PATH = 'get-last-project-path',
+  SET_LAST_PROJECT_PATH = 'set-last-project-path',
+  SAVE_AUTO_SAVE = 'save-auto-save',
+  GET_AUTO_SAVE = 'get-auto-save',
+  CLEAR_AUTO_SAVE = 'clear-auto-save',
+  HAS_AUTO_SAVE = 'has-auto-save',
 }

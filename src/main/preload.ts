@@ -39,8 +39,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadProject: () =>
     ipcRenderer.invoke('load-project'),
 
+  loadProjectByPath: (filePath: string) =>
+    ipcRenderer.invoke('load-project-by-path', filePath),
+
   getRecentProjects: () =>
     ipcRenderer.invoke('get-recent-projects'),
+
+  // Last project path
+  getLastProjectPath: () =>
+    ipcRenderer.invoke('get-last-project-path'),
+
+  setLastProjectPath: (filePath: string) =>
+    ipcRenderer.invoke('set-last-project-path', filePath),
+
+  // Auto-save
+  saveAutoSave: (project: any) =>
+    ipcRenderer.invoke('save-auto-save', project),
+
+  getAutoSave: () =>
+    ipcRenderer.invoke('get-auto-save'),
+
+  clearAutoSave: () =>
+    ipcRenderer.invoke('clear-auto-save'),
+
+  hasAutoSave: () =>
+    ipcRenderer.invoke('has-auto-save'),
 
   // Audio file loading
   readAudioFile: (filePath: string) =>
@@ -84,7 +107,14 @@ declare global {
       saveProject: (project: any, filePath?: string) => Promise<string>;
       saveProjectAs: (project: any) => Promise<string>;
       loadProject: () => Promise<{ project: any; filePath: string } | null>;
+      loadProjectByPath: (filePath: string) => Promise<{ project: any; filePath: string }>;
       getRecentProjects: () => Promise<string[]>;
+      getLastProjectPath: () => Promise<string | undefined>;
+      setLastProjectPath: (filePath: string) => Promise<any>;
+      saveAutoSave: (project: any) => Promise<any>;
+      getAutoSave: () => Promise<{ project: any; timestamp: string } | null>;
+      clearAutoSave: () => Promise<any>;
+      hasAutoSave: () => Promise<boolean>;
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
     };
     audioIO: {

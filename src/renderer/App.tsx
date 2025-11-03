@@ -51,7 +51,7 @@ const App: React.FC = () => {
   const midiHandlerRef = useRef<MidiHandler | null>(null);
   const soundManagerRef = useRef<SoundManager | null>(null);
 
-  // Initialize engines
+  // Initialize engines and auto-load last project
   useEffect(() => {
     // Add global error handler to catch crashes
     const handleError = (event: ErrorEvent) => {
@@ -85,6 +85,9 @@ const App: React.FC = () => {
         });
 
         console.log("Engines initialized successfully");
+
+        // Auto-load last project
+        await autoLoadLastProject();
       } catch (error) {
         console.error("Failed to initialize engines:", error);
       }
@@ -101,6 +104,71 @@ const App: React.FC = () => {
       soundManagerRef.current?.destroy();
     };
   }, []);
+
+  // Auto-load last project on startup
+  const autoLoadLastProject = async () => {
+    try {
+      const lastProjectPath = await window.electronAPI.getLastProjectPath();
+      if (lastProjectPath) {
+        console.log("Auto-loading last project:", lastProjectPath);
+
+        const result = await window.electronAPI.loadProjectByPath(lastProjectPath);
+        if (result) {
+          dispatch(setSounds(result.project.sounds));
+          dispatch(setSettings(result.project.settings));
+
+          if (result.project.tabs && result.project.tabs.length > 0) {
+            dispatch(setTabs(result.project.tabs));
+          }
+
+          dispatch(setCurrentProjectPath(result.filePath));
+          dispatch(setDirty(false));
+
+          // Reload sounds into audio engine
+          if (soundManagerRef.current && audioEngineRef.current) {
+            for (const sound of result.project.sounds) {
+              try {
+                await audioEngineRef.current.loadSound(sound);
+              } catch (error) {
+                console.error(`Failed to load sound ${sound.name}:`, error);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to auto-load last project:", error);
+      // If auto-load fails, just start with empty project
+    }
+  };
+
+  // Auto-save periodically
+  useEffect(() => {
+    const autoSaveInterval = setInterval(async () => {
+      if (ui.isDirty) {
+        try {
+          const project: Project = {
+            name: ui.currentProjectPath
+              ? ui.currentProjectPath.split("/").pop()?.replace(".sboard", "") || "Untitled"
+              : "Untitled",
+            version: "1.0.0",
+            sounds,
+            settings,
+            tabs,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          await window.electronAPI.saveAutoSave(project);
+          console.log("Auto-saved project state");
+        } catch (error) {
+          console.error("Auto-save failed:", error);
+        }
+      }
+    }, 30000); // Auto-save every 30 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [ui.isDirty, ui.currentProjectPath, sounds, settings, tabs]);
 
   // Update sound manager when settings change
   useEffect(() => {
@@ -512,6 +580,50 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRevertAutoSave = async () => {
+    try {
+      const autoSaveData = await window.electronAPI.getAutoSave();
+      if (!autoSaveData) {
+        alert("No auto-save available");
+        return;
+      }
+
+      const timestamp = new Date(autoSaveData.timestamp).toLocaleString();
+      const confirmed = window.confirm(
+        `Revert to auto-save from ${timestamp}? Current unsaved changes will be lost.`
+      );
+
+      if (!confirmed) return;
+
+      const project = autoSaveData.project;
+
+      dispatch(setSounds(project.sounds));
+      dispatch(setSettings(project.settings));
+
+      if (project.tabs && project.tabs.length > 0) {
+        dispatch(setTabs(project.tabs));
+      }
+
+      dispatch(setDirty(true)); // Mark as dirty since we reverted from auto-save
+
+      // Reload sounds into audio engine
+      if (soundManagerRef.current && audioEngineRef.current) {
+        for (const sound of project.sounds) {
+          try {
+            await audioEngineRef.current.loadSound(sound);
+          } catch (error) {
+            console.error(`Failed to load sound ${sound.name}:`, error);
+          }
+        }
+      }
+
+      console.log("Reverted to auto-save successfully");
+    } catch (error) {
+      console.error("Failed to revert to auto-save:", error);
+      alert(`Failed to revert: ${error}`);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-dark-800 text-dark-50">
       <Header
@@ -522,6 +634,7 @@ const App: React.FC = () => {
         onSaveAs={handleSaveProjectAs}
         onLoad={handleLoadProject}
         onAddSound={handleAddSound}
+        onRevertAutoSave={handleRevertAutoSave}
         midiHandler={midiHandlerRef.current}
       />
 
