@@ -160,6 +160,11 @@ export class SoundManager {
     return sound;
   }
 
+  public loadExistingSound(sound: Sound): void {
+    // Add an existing sound to the manager (used when loading projects)
+    this.sounds.set(sound.id, sound);
+  }
+
   public removeSound(soundId: string): void {
     const sound = this.sounds.get(soundId);
     if (sound) {

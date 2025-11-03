@@ -132,7 +132,7 @@ const App: React.FC = () => {
           dispatch(setCurrentProjectPath(result.filePath));
           dispatch(setDirty(false));
 
-          // Reload sounds into audio engine, regenerating synth sounds if needed
+          // Reload sounds into sound manager and audio engine, regenerating synth sounds if needed
           if (soundManagerRef.current && audioEngineRef.current) {
             for (const sound of result.project.sounds) {
               try {
@@ -160,7 +160,10 @@ const App: React.FC = () => {
                   }
                 }
 
+                // Load into audio engine
                 await audioEngineRef.current.loadSound(sound);
+                // Add to sound manager's internal map
+                soundManagerRef.current.loadExistingSound(sound);
               } catch (error) {
                 console.error(`Failed to load sound ${sound.name}:`, error);
               }
@@ -655,7 +658,7 @@ const App: React.FC = () => {
         dispatch(setCurrentProjectPath(result.filePath));
         dispatch(setDirty(false));
 
-        // Reload sounds into audio engine, regenerating synth sounds if needed
+        // Reload sounds into sound manager and audio engine, regenerating synth sounds if needed
         if (soundManagerRef.current && audioEngineRef.current) {
           for (const sound of result.project.sounds) {
             try {
@@ -683,7 +686,10 @@ const App: React.FC = () => {
                 }
               }
 
+              // Load into audio engine
               await audioEngineRef.current.loadSound(sound);
+              // Add to sound manager's internal map
+              soundManagerRef.current.loadExistingSound(sound);
             } catch (error) {
               console.error(`Failed to load sound ${sound.name}:`, error);
             }
