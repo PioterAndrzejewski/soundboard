@@ -316,31 +316,26 @@ const TabBar: React.FC = () => {
               >
                 <div className="text-base font-medium mb-2">APC RIGHT Layout</div>
                 <div className="text-xs text-dark-300 mb-3">
-                  8 knobs (bidirectional) + 5 buttons + 1 button. AKAI APC RIGHT controller.
+                  8 knobs with dual sound assignment. Each knob has left/right sides.
                 </div>
                 <div className="flex flex-col gap-1">
-                  {/* Knobs preview - 2 rows of 4 */}
+                  {/* Knobs preview - 2 rows of 4 dual buttons */}
                   <div className="flex flex-col gap-0.5">
                     <div className="flex gap-0.5 justify-center">
                       {[...Array(4)].map((_, i) => (
-                        <div key={`k1-${i}`} className="w-4 h-4 rounded-full bg-purple-600" />
+                        <div key={`k1-${i}`} className="flex gap-[1px]">
+                          <div className="w-2 h-4 bg-purple-600 rounded-l" />
+                          <div className="w-2 h-4 bg-purple-600 rounded-r" />
+                        </div>
                       ))}
                     </div>
                     <div className="flex gap-0.5 justify-center">
                       {[...Array(4)].map((_, i) => (
-                        <div key={`k2-${i}`} className="w-4 h-4 rounded-full bg-purple-600" />
+                        <div key={`k2-${i}`} className="flex gap-[1px]">
+                          <div className="w-2 h-4 bg-purple-600 rounded-l" />
+                          <div className="w-2 h-4 bg-purple-600 rounded-r" />
+                        </div>
                       ))}
-                    </div>
-                  </div>
-                  {/* Buttons preview */}
-                  <div className="flex flex-col gap-0.5 mt-1">
-                    <div className="flex gap-0.5 justify-center">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={`b1-${i}`} className="w-4 h-2 bg-blue-600 rounded-sm" />
-                      ))}
-                    </div>
-                    <div className="flex justify-center">
-                      <div className="w-4 h-2 bg-blue-600 rounded-sm" />
                     </div>
                   </div>
                 </div>
