@@ -153,23 +153,6 @@ const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex gap-2">
-        {/* MIDI Mapping Mode Toggle - Icon Only */}
-        <button
-          onClick={() => dispatch(toggleMidiMappingMode())}
-          className={`px-3 py-1.5 rounded text-lg transition-all ${
-            ui.isMidiMappingMode
-              ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
-              : "bg-dark-500 hover:bg-dark-400"
-          }`}
-          title={
-            ui.isMidiMappingMode
-              ? "Exit MIDI mapping mode"
-              : "Enter MIDI mapping mode"
-          }
-        >
-          🎹
-        </button>
-
         {/* Audio Output Selector */}
         <div className="relative">
           <select
@@ -247,6 +230,22 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
           )}
+          {/* MIDI Mapping Mode Toggle - Icon Only */}
+          <button
+            onClick={() => dispatch(toggleMidiMappingMode())}
+            className={`px-3 py-1.5 rounded text-lg transition-all ${
+              ui.isMidiMappingMode
+                ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
+                : "bg-dark-500 hover:bg-dark-400"
+            }`}
+            title={
+              ui.isMidiMappingMode
+                ? "Exit MIDI mapping mode"
+                : "Enter MIDI mapping mode"
+            }
+          >
+            🎹
+          </button>
         </div>
 
         <button
