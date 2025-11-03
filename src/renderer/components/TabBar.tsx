@@ -27,7 +27,7 @@ const TabBar: React.FC = () => {
   };
 
   const handleCreateTab = (layoutType: 'free' | 'apc-mini' | 'apc-key25') => {
-    dispatch(addTab(layoutType));
+    dispatch(addTab({ layoutType, shouldGenerateSounds: layoutType === 'apc-key25' }));
     setShowCreateModal(false);
   };
 

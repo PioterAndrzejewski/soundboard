@@ -26,8 +26,8 @@ const tabsSlice = createSlice({
   name: 'tabs',
   initialState,
   reducers: {
-    addTab: (state, action: PayloadAction<TabLayoutType | undefined>) => {
-      const layoutType = action.payload || 'free';
+    addTab: (state, action: PayloadAction<{ layoutType?: TabLayoutType; shouldGenerateSounds?: boolean }>) => {
+      const layoutType = action.payload?.layoutType || 'free';
       let tabName = `Tab ${state.tabs.length + 1}`;
       if (layoutType === 'apc-mini') {
         tabName = 'APC MINI';

@@ -23,6 +23,7 @@ declare global {
       clearAutoSave: () => Promise<any>;
       hasAutoSave: () => Promise<boolean>;
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
+      saveSynthSound: (noteName: string, audioData: Uint8Array) => Promise<string>;
     };
   }
 }

@@ -230,6 +230,30 @@ function setupIpcHandlers() {
       throw error;
     }
   });
+
+  // Save synthesized sound
+  ipcMain.handle('save-synth-sound', async (event, noteName: string, audioData: Uint8Array) => {
+    try {
+      const tempDir = app.getPath('temp');
+      const synthDir = path.join(tempDir, 'soundboard-synth');
+
+      // Create synth directory if it doesn't exist
+      await fs.mkdir(synthDir, { recursive: true });
+
+      // Create filename from note name
+      const fileName = `synth_${noteName.replace('#', 's')}.wav`;
+      const filePath = path.join(synthDir, fileName);
+
+      // Write the audio data
+      await fs.writeFile(filePath, Buffer.from(audioData));
+
+      console.log('Synth sound saved:', filePath);
+      return filePath;
+    } catch (error) {
+      console.error('Failed to save synth sound:', error);
+      throw error;
+    }
+  });
 }
 
 app.whenReady().then(() => {

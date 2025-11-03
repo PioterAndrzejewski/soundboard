@@ -68,6 +68,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Audio file loading
   readAudioFile: (filePath: string) =>
     ipcRenderer.invoke('read-audio-file', filePath),
+
+  // Synth sound generation
+  saveSynthSound: (noteName: string, audioData: Uint8Array) =>
+    ipcRenderer.invoke('save-synth-sound', noteName, audioData),
 });
 
 // Expose audioIO for WaveformEditor
@@ -116,6 +120,7 @@ declare global {
       clearAutoSave: () => Promise<any>;
       hasAutoSave: () => Promise<boolean>;
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
+      saveSynthSound: (noteName: string, audioData: Uint8Array) => Promise<string>;
     };
     audioIO: {
       readFile: (filePath: string) => Promise<ArrayBuffer>;

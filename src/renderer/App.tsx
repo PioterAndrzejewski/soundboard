@@ -24,6 +24,7 @@ import { setTabs } from "./store/tabsSlice";
 import { AudioEngine } from "./audioEngine";
 import { MidiHandler } from "./midiHandler";
 import { SoundManager } from "./soundManager";
+import { generateAndSaveSynthSound } from "./synthGenerator";
 import Header from "./components/Header";
 import TabBar from "./components/TabBar";
 import SoundsGrid from "./components/SoundsGrid";
@@ -689,6 +690,75 @@ const App: React.FC = () => {
       soundManagerRef.current.playSound(soundId);
     }
   };
+
+  // Auto-generate synth sounds for APC KEY25 tabs
+  useEffect(() => {
+    const generateSoundsForPianoTab = async () => {
+      // Find APC KEY25 tabs that don't have sounds yet
+      const pianoTabs = tabs.filter(t => t.layoutType === 'apc-key25');
+
+      for (const tab of pianoTabs) {
+        // Check if this tab already has sounds
+        const tabSounds = sounds.filter(s => s.tabId === tab.id);
+        if (tabSounds.length > 0) continue; // Skip if already has sounds
+
+        console.log(`Generating synth sounds for tab: ${tab.name}`);
+
+        // Generate sounds for all 25 keys (C1 to C3)
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const pianoKeys: string[] = [];
+
+        for (let octave = 1; octave <= 3; octave++) {
+          for (let noteIdx = 0; noteIdx < notes.length; noteIdx++) {
+            const note = notes[noteIdx];
+            const noteName = `${note}${octave}`;
+            pianoKeys.push(noteName);
+            if (noteName === 'C3') break; // Stop at C3 (25th key)
+          }
+          if (pianoKeys.length >= 25) break;
+        }
+
+        // Generate sounds in batches to avoid overwhelming the system
+        try {
+          for (let i = 0; i < pianoKeys.length; i++) {
+            const noteName = pianoKeys[i];
+
+            console.log(`Generating sound for ${noteName} (${i + 1}/25)...`);
+
+            // Generate synth sound
+            const filePath = await generateAndSaveSynthSound(noteName);
+
+            // Add to sound manager
+            if (soundManagerRef.current && audioEngineRef.current) {
+              const sound = await soundManagerRef.current.addSound(filePath, noteName);
+
+              // Assign to piano key slot
+              const soundWithPosition = {
+                ...sound,
+                tabId: tab.id,
+                slotPosition: { row: i, col: 0 }, // keyIndex as row
+              };
+
+              dispatch(addSound(soundWithPosition));
+            }
+
+            // Small delay between generations to keep UI responsive
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+
+          console.log(`✅ Generated all synth sounds for tab: ${tab.name}`);
+          dispatch(setDirty(true));
+        } catch (error) {
+          console.error('Failed to generate synth sounds:', error);
+        }
+      }
+    };
+
+    // Only run if we have sound manager initialized
+    if (soundManagerRef.current && tabs.length > 0) {
+      generateSoundsForPianoTab();
+    }
+  }, [tabs, dispatch]); // Re-run when tabs change
 
   return (
     <div className="flex flex-col h-screen bg-dark-800 text-dark-50">
