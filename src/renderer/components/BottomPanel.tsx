@@ -42,7 +42,7 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
   const dragStartValue = useRef(0);
 
   // Calculate angle based on value and default position
-  // For effects with default=0 (dist, reverb, delay): use standard mapping
+  // For effects with default=0 (dist, reverb, delay): wider range -160 to +160
   // For effects with default at center: remap so default appears at top (0deg)
   const normalizedDefault = (defaultValue - min) / (max - min);
   const normalizedValue = (value - min) / (max - min);
@@ -51,21 +51,18 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
 
   // Check if default is at minimum (0 on normalized scale)
   if (normalizedDefault === 0) {
-    // Standard mapping: min=-135deg, max=+135deg
-    angle = -135 + normalizedValue * 270;
+    // Wider mapping for effects starting at 0: min=-160deg, max=+160deg
+    angle = -160 + normalizedValue * 320;
   } else {
     // Default is in the middle - remap so default is at 0deg (top center)
     // Map the normalized value range [0, 1] to angle range where default is at 0deg
-    const valueRelativeToDefault = normalizedValue - normalizedDefault;
-    const rangeToLeft = normalizedDefault; // Range from min to default
-    const rangeToRight = 1 - normalizedDefault; // Range from default to max
 
     if (normalizedValue < normalizedDefault) {
-      // Value is below default: map to [-135, 0]
-      angle = -135 + (normalizedValue / normalizedDefault) * 135;
+      // Value is below default: map to [-160, 0]
+      angle = -160 + (normalizedValue / normalizedDefault) * 160;
     } else {
-      // Value is at or above default: map to [0, +135]
-      angle = 0 + ((normalizedValue - normalizedDefault) / rangeToRight) * 135;
+      // Value is at or above default: map to [0, +160]
+      angle = 0 + ((normalizedValue - normalizedDefault) / (1 - normalizedDefault)) * 160;
     }
   }
 
@@ -88,10 +85,21 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
     const sensitivity = (max - min) / 200;
     let newValue = Math.max(min, Math.min(max, dragStartValue.current + deltaY * sensitivity));
 
-    // Snap to default value when close (within 2% of range)
-    const snapThreshold = (max - min) * 0.02;
-    if (Math.abs(newValue - defaultValue) < snapThreshold) {
-      newValue = defaultValue;
+    // Apply specific snapping based on the effect type
+    // Speed: snap to 1.0 when between 0.95 and 1.05
+    if (label === 'Speed' && newValue >= 0.95 && newValue <= 1.05) {
+      newValue = 1.0;
+    }
+    // Pan: snap to 0 when between -0.05 and 0.05 (5%)
+    else if (label === 'Pan' && newValue >= -0.05 && newValue <= 0.05) {
+      newValue = 0;
+    }
+    // General snap to default value when very close (within 2% of range)
+    else {
+      const snapThreshold = (max - min) * 0.02;
+      if (Math.abs(newValue - defaultValue) < snapThreshold) {
+        newValue = defaultValue;
+      }
     }
 
     onChange(newValue);
