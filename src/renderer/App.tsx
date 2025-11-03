@@ -16,6 +16,9 @@ import {
   stopMidiListening,
   clearMappingTarget,
   startMappingTarget,
+  setSelectedSound,
+  openSettingsModal,
+  startMidiListening,
 } from "./store/uiSlice";
 import { setTabs } from "./store/tabsSlice";
 import { AudioEngine } from "./audioEngine";
@@ -706,6 +709,14 @@ const App: React.FC = () => {
                 onAssignSound={handleAssignSoundToSlot}
                 onPlaySound={handlePlaySound}
                 onRemoveSound={handleRemoveSound}
+                onEditSound={(soundId) => {
+                  dispatch(setSelectedSound(soundId));
+                  dispatch(openSettingsModal());
+                }}
+                onStartMidiMapping={(soundId) => {
+                  dispatch(setSelectedSound(soundId));
+                  dispatch(startMidiListening('sound'));
+                }}
               />
             ) : (
               <SoundsGrid

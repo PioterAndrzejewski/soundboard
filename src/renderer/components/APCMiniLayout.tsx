@@ -91,8 +91,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
               ✕
             </button>
 
-            {/* Name */}
-            <div className="text-xs font-medium truncate">{sound.name}</div>
+            {/* Name in top left */}
+            <div className="absolute top-1 left-1 text-xs font-medium truncate pr-8 max-w-[80%]">
+              {sound.name}
+            </div>
 
             {/* Bottom left buttons */}
             <div className="absolute bottom-1 left-1 flex gap-0.5">
@@ -118,10 +120,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
               </button>
             </div>
 
-            {/* MIDI indicator */}
+            {/* MIDI indicator in bottom right */}
             {sound.midiMapping && (
-              <div className="text-[9px] text-green-300 truncate mt-auto">
-                🎹 {sound.midiMapping.note} Ch{sound.midiMapping.channel + 1}
+              <div className="absolute bottom-1 right-1 text-[9px] text-green-300">
+                🎹 {sound.midiMapping.note}
               </div>
             )}
           </>
@@ -172,8 +174,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
               ✕
             </button>
 
-            {/* Name */}
-            <div className="text-xs font-medium truncate">{sound.name}</div>
+            {/* Name in top left */}
+            <div className="absolute top-1 left-1 text-xs font-medium truncate pr-8 max-w-[80%]">
+              {sound.name}
+            </div>
 
             {/* Bottom left buttons */}
             <div className="absolute bottom-1 left-1 flex gap-0.5">
@@ -199,10 +203,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
               </button>
             </div>
 
-            {/* MIDI indicator */}
+            {/* MIDI indicator in bottom right */}
             {sound.midiMapping && (
-              <div className="text-[9px] text-green-300 truncate mt-auto">
-                🎹 {sound.midiMapping.note} Ch{sound.midiMapping.channel + 1}
+              <div className="absolute bottom-1 right-1 text-[9px] text-green-300">
+                🎹 {sound.midiMapping.note}
               </div>
             )}
           </>
@@ -251,8 +255,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
               ✕
             </button>
 
-            {/* Name */}
-            <div className="text-xs font-medium truncate">{sound.name}</div>
+            {/* Name in top left */}
+            <div className="absolute top-1 left-1 text-xs font-medium truncate pr-8 max-w-[80%]">
+              {sound.name}
+            </div>
 
             {/* Bottom left buttons */}
             <div className="absolute bottom-1 left-1 flex gap-0.5">
@@ -278,10 +284,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
               </button>
             </div>
 
-            {/* MIDI indicator */}
+            {/* MIDI indicator in bottom right */}
             {sound.midiMapping && (
-              <div className="text-[9px] text-green-300 truncate mt-auto">
-                🎹 {sound.midiMapping.note} Ch{sound.midiMapping.channel + 1}
+              <div className="absolute bottom-1 right-1 text-[9px] text-green-300">
+                🎹 {sound.midiMapping.note}
               </div>
             )}
           </>
@@ -298,14 +304,14 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
         {/* Top section: 8x8 grid + side column */}
         <div className="flex gap-4">
           {/* Main 8x8 Grid */}
-          <div className="grid grid-cols-8 gap-2" style={{ width: '640px' }}>
+          <div className="grid grid-cols-8 gap-2" style={{ width: '960px' }}>
             {[...Array(8)].map((_, row) =>
               [...Array(8)].map((_, col) => renderGridButton(row, col))
             )}
           </div>
 
           {/* Right side column: 8 rounded buttons */}
-          <div className="flex flex-col gap-2" style={{ width: '80px' }}>
+          <div className="flex flex-col gap-2" style={{ width: '120px' }}>
             {[...Array(8)].map((_, row) => renderRoundButton(row, 0, 'side'))}
           </div>
         </div>
@@ -313,12 +319,12 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
         {/* Bottom section: 8 rounded buttons + square button */}
         <div className="flex gap-4">
           {/* Bottom 8 rounded buttons */}
-          <div className="grid grid-cols-8 gap-2" style={{ width: '640px' }}>
+          <div className="grid grid-cols-8 gap-2" style={{ width: '960px' }}>
             {[...Array(8)].map((_, col) => renderRoundButton(0, col, 'bottom'))}
           </div>
 
           {/* Bottom-right square button */}
-          <div style={{ width: '40px' }}>
+          <div style={{ width: '60px' }}>
             {renderSquareButton(8, 0)}
           </div>
         </div>
