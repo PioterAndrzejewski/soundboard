@@ -30,6 +30,7 @@ import TabBar from "./components/TabBar";
 import SoundsGrid from "./components/SoundsGrid";
 import APCMiniLayout from "./components/APCMiniLayout";
 import APCKey25Layout from "./components/APCKey25Layout";
+import APCKeyLayout from "./components/APCKeyLayout";
 import SoundSettingsModal from "./components/SoundSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
@@ -630,7 +631,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAssignSoundToSlot = async (row: number, col: number, section: 'grid' | 'bottom' | 'side' | 'piano') => {
+  const handleAssignSoundToSlot = async (row: number, col: number, section: 'grid' | 'bottom' | 'side' | 'piano' | 'right') => {
     try {
       const filePath = await window.electronAPI.selectSoundFile();
       if (filePath && soundManagerRef.current) {
@@ -647,8 +648,9 @@ const App: React.FC = () => {
 
         // Adjust row based on section to make positions unique
         // Grid: row 0-7, col 0-7 (keep actual values)
-        // Bottom: row 100-107, col 0
-        // Side: row 200-207 or 300, col 0
+        // Bottom: row 100-107, col 0 (APC MINI) or row 500-508, col 0 (APC KEY)
+        // Side: row 200-207 or 300, col 0 (APC MINI)
+        // Right: row 400-404, col 0 (APC KEY)
         // Piano: row as keyIndex (0-24), col 0
         let adjustedRow = row;
         let adjustedCol = col;
@@ -658,10 +660,19 @@ const App: React.FC = () => {
           adjustedRow = row;
           adjustedCol = col;
         } else if (section === 'bottom') {
-          adjustedRow = 100 + col;
+          // Check current tab layout to determine offset
+          const currentTab = tabs.find(t => t.id === activeTabId);
+          if (currentTab?.layoutType === 'apc-key') {
+            adjustedRow = 500 + col; // APC KEY: 500-508
+          } else {
+            adjustedRow = 100 + col; // APC MINI: 100-107
+          }
           adjustedCol = 0;
         } else if (section === 'side') {
           adjustedRow = 200 + row;
+          adjustedCol = 0;
+        } else if (section === 'right') {
+          adjustedRow = 400 + row; // APC KEY right column: 400-404
           adjustedCol = 0;
         } else if (section === 'piano') {
           // For piano keys, use row as-is (keyIndex 0-24)
@@ -809,6 +820,24 @@ const App: React.FC = () => {
               } else if (currentLayout === 'apc-key25') {
                 return (
                   <APCKey25Layout
+                    tabId={activeTabId || ''}
+                    sounds={filteredSounds}
+                    onAssignSound={handleAssignSoundToSlot}
+                    onPlaySound={handlePlaySound}
+                    onRemoveSound={handleRemoveSound}
+                    onEditSound={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(openSettingsModal());
+                    }}
+                    onStartMidiMapping={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(startMidiListening('sound'));
+                    }}
+                  />
+                );
+              } else if (currentLayout === 'apc-key') {
+                return (
+                  <APCKeyLayout
                     tabId={activeTabId || ''}
                     sounds={filteredSounds}
                     onAssignSound={handleAssignSoundToSlot}

@@ -33,6 +33,8 @@ const tabsSlice = createSlice({
         tabName = 'APC MINI';
       } else if (layoutType === 'apc-key25') {
         tabName = 'APC KEY25';
+      } else if (layoutType === 'apc-key') {
+        tabName = 'APC KEY';
       }
       const newTab: Tab = {
         id: uuidv4(),

@@ -26,7 +26,7 @@ const TabBar: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  const handleCreateTab = (layoutType: 'free' | 'apc-mini' | 'apc-key25') => {
+  const handleCreateTab = (layoutType: 'free' | 'apc-mini' | 'apc-key25' | 'apc-key') => {
     dispatch(addTab({ layoutType, shouldGenerateSounds: layoutType === 'apc-key25' }));
     setShowCreateModal(false);
   };
@@ -114,11 +114,11 @@ const TabBar: React.FC = () => {
       {/* Create Tab Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-dark-700 rounded-lg p-6 w-[800px] border border-dark-600">
+          <div className="bg-dark-700 rounded-lg p-6 w-[900px] border border-dark-600">
             <h2 className="text-lg font-semibold mb-4">Create New Tab</h2>
             <p className="text-sm text-dark-300 mb-6">Choose a layout for your new tab:</p>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-6">
               {/* Empty Page Option */}
               <button
                 onClick={() => handleCreateTab('free')}
@@ -208,6 +208,40 @@ const TabBar: React.FC = () => {
                         );
                       })}
                     </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* APC KEY Layout Option */}
+              <button
+                onClick={() => handleCreateTab('apc-key')}
+                className="p-4 bg-dark-600 hover:bg-dark-500 border-2 border-dark-500 hover:border-blue-500 rounded-lg transition-all text-left"
+              >
+                <div className="text-base font-medium mb-2">APC KEY Layout</div>
+                <div className="text-xs text-dark-300 mb-3">
+                  8×5 grid + 5 right + 9 bottom buttons. Matches APC KEY controller.
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {/* Top section: 8x5 grid + right column preview */}
+                  <div className="flex gap-0.5">
+                    {/* 8x5 grid preview */}
+                    <div className="grid grid-cols-8 gap-[1px] flex-1">
+                      {[...Array(40)].map((_, i) => (
+                        <div key={i} className="aspect-[2.5/1] bg-blue-600" />
+                      ))}
+                    </div>
+                    {/* Right side column */}
+                    <div className="flex flex-col gap-[1px]" style={{ width: '12.5%' }}>
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="aspect-[2.5/1] bg-green-600" />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Bottom section: 9 buttons */}
+                  <div className="flex gap-[1px]">
+                    {[...Array(9)].map((_, i) => (
+                      <div key={i} className="flex-1 aspect-[2.5/1] bg-green-600" />
+                    ))}
                   </div>
                 </div>
               </button>

@@ -94,7 +94,7 @@ export interface AppState {
 }
 
 // Tab definition
-export type TabLayoutType = 'free' | 'apc-mini' | 'apc-key25';
+export type TabLayoutType = 'free' | 'apc-mini' | 'apc-key25' | 'apc-key';
 
 export interface Tab {
   id: string;
