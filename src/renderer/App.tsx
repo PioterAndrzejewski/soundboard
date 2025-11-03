@@ -629,7 +629,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAssignSoundToSlot = async (row: number, col: number, section: 'grid' | 'bottom' | 'side') => {
+  const handleAssignSoundToSlot = async (row: number, col: number, section: 'grid' | 'bottom' | 'side' | 'piano') => {
     try {
       const filePath = await window.electronAPI.selectSoundFile();
       if (filePath && soundManagerRef.current) {
@@ -648,6 +648,7 @@ const App: React.FC = () => {
         // Grid: row 0-7, col 0-7 (keep actual values)
         // Bottom: row 100-107, col 0
         // Side: row 200-207 or 300, col 0
+        // Piano: row as keyIndex (0-24), col 0
         let adjustedRow = row;
         let adjustedCol = col;
 
@@ -660,6 +661,10 @@ const App: React.FC = () => {
           adjustedCol = 0;
         } else if (section === 'side') {
           adjustedRow = 200 + row;
+          adjustedCol = 0;
+        } else if (section === 'piano') {
+          // For piano keys, use row as-is (keyIndex 0-24)
+          adjustedRow = row;
           adjustedCol = 0;
         }
 

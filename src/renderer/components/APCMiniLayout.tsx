@@ -145,7 +145,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-[2/1] border-2 rounded-lg transition-all cursor-pointer flex flex-col p-2
+          relative w-full aspect-[2.5/1] border-2 rounded-lg transition-all cursor-pointer flex flex-col p-2
           ${sound ? 'border-green-500 bg-green-900 hover:bg-green-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-green-400' : ''}
         `}
@@ -304,7 +304,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
         {/* Top section: 8x8 grid + side column */}
         <div className="flex gap-1">
           {/* Main 8x8 Grid */}
-          <div className="grid grid-cols-8 gap-0.5" style={{ width: '960px' }}>
+          <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px' }}>
             {[...Array(8)].map((_, row) =>
               [...Array(8)].map((_, col) => renderGridButton(row, col))
             )}
@@ -319,7 +319,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
         {/* Bottom section: 8 rounded buttons + square button */}
         <div className="flex gap-1">
           {/* Bottom 8 rounded buttons */}
-          <div className="grid grid-cols-8 gap-0.5" style={{ width: '960px' }}>
+          <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px' }}>
             {[...Array(8)].map((_, col) => renderRoundButton(0, col, 'bottom'))}
           </div>
 
