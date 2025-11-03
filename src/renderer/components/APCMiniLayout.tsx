@@ -23,24 +23,38 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
 
   // Find sound at specific position
-  const getSoundAtPosition = (row: number, col: number): Sound | undefined => {
+  // We need to create unique identifiers for each section
+  // Grid: row 0-7, col 0-7
+  // Bottom: row 100, col 0-7
+  // Side: row 200-207, col 0
+  // Square: row 300, col 0
+  const getSoundAtPosition = (row: number, col: number, section: 'grid' | 'bottom' | 'side'): Sound | undefined => {
+    let adjustedRow = row;
+
+    // Adjust row based on section to make positions unique
+    if (section === 'bottom') {
+      adjustedRow = 100 + col; // 100-107
+    } else if (section === 'side') {
+      adjustedRow = 200 + row; // 200-207 or 300 for square
+    }
+
     return sounds.find(s =>
-      s.slotPosition?.row === row &&
-      s.slotPosition?.col === col &&
+      s.slotPosition?.row === adjustedRow &&
+      s.slotPosition?.col === 0 && // Use col 0 for all in adjusted system
       s.tabId === tabId
     );
   };
 
   const renderGridButton = (row: number, col: number) => {
     const slotKey = `grid-${row}-${col}`;
-    const sound = getSoundAtPosition(row, col);
+    const sound = getSoundAtPosition(row, col, 'grid');
     const isHovered = hoveredSlot === slotKey;
 
     return (
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-[2/1] border-2 rounded transition-all cursor-pointer flex flex-col p-2
+          relative w-full aspect-[2/1] border-2 transition-all cursor-pointer flex flex-col p-2
           ${sound ? 'border-blue-500 bg-blue-900 hover:bg-blue-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-blue-400' : ''}
         `}
@@ -93,14 +107,14 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
 
   const renderRoundButton = (row: number, col: number, section: 'bottom' | 'side') => {
     const slotKey = `${section}-${row}-${col}`;
-    const sound = getSoundAtPosition(row, col);
+    const sound = getSoundAtPosition(row, col, section);
     const isHovered = hoveredSlot === slotKey;
 
     return (
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-square border-2 rounded-full transition-all cursor-pointer flex flex-col items-center justify-center p-2
+          relative w-full aspect-square border-2 rounded transition-all cursor-pointer flex flex-col items-center justify-center p-2
           ${sound ? 'border-green-500 bg-green-900 hover:bg-green-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-green-400' : ''}
         `}
@@ -126,14 +140,14 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
 
   const renderSquareButton = (row: number, col: number) => {
     const slotKey = `side-${row}-${col}`;
-    const sound = getSoundAtPosition(row, col);
+    const sound = getSoundAtPosition(row, col, 'side');
     const isHovered = hoveredSlot === slotKey;
 
     return (
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-square border-2 transition-all cursor-pointer flex items-center justify-center p-2
+          relative w-full aspect-square border-2 transition-all cursor-pointer flex flex-col items-center justify-center p-2
           ${sound ? 'border-red-500 bg-red-900 hover:bg-red-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-red-400' : ''}
         `}
