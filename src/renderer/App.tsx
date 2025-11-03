@@ -705,16 +705,28 @@ const App: React.FC = () => {
   const handleRegenerateWithInstrument = async (instrument: InstrumentType) => {
     if (!activeTabId) return;
 
-    // Remove all sounds from this tab
+    console.log(`🔄 Switching to ${instrument} instrument...`);
+
+    // Save MIDI mappings from current sounds (indexed by slotPosition.row)
     const tabSounds = sounds.filter(s => s.tabId === activeTabId);
+    const midiMappingsByRow = new Map<number, any>();
+
+    tabSounds.forEach(sound => {
+      if (sound.midiMapping && sound.slotPosition) {
+        midiMappingsByRow.set(sound.slotPosition.row, sound.midiMapping);
+        console.log(`💾 Saved MIDI mapping for row ${sound.slotPosition.row}:`, sound.midiMapping);
+      }
+    });
+
+    // Remove all sounds from this tab from Redux and audio engine
     for (const sound of tabSounds) {
       if (soundManagerRef.current) {
         soundManagerRef.current.removeSound(sound.id);
-        dispatch(removeSound(sound.id));
       }
+      dispatch(removeSound(sound.id));
     }
 
-    // Regenerate with new instrument
+    // Load pre-generated sounds for the selected instrument
     const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const pianoKeys: string[] = [];
 
@@ -729,41 +741,69 @@ const App: React.FC = () => {
     }
 
     try {
+      // Get temp directory once
+      const tempDir = await window.electronAPI.getTempDir();
+      console.log('📁 Temp directory:', tempDir);
+
       for (let i = 0; i < pianoKeys.length; i++) {
         const noteName = pianoKeys[i];
-        console.log(`Generating ${instrument} sound for ${noteName} (${i + 1}/25)...`);
+        console.log(`Loading ${instrument} sound for ${noteName} (${i + 1}/25)...`);
 
-        const filePath = await generateAndSaveSynthSound(noteName, instrument);
+        // Get path to pre-generated sound file
+        // The file was saved as: synth_${noteName}_${instrument}.wav with # replaced by 's'
+        const fileName = `synth_${noteName}_${instrument}.wav`.replace('#', 's');
+        const filePath = `${tempDir}/soundboard-synth/${fileName}`;
+
+        console.log(`📂 Loading file: ${filePath}`);
 
         if (soundManagerRef.current && audioEngineRef.current) {
-          const sound = await soundManagerRef.current.addSound(filePath, noteName);
-          await audioEngineRef.current.loadSound(sound);
+          try {
+            const sound = await soundManagerRef.current.addSound(filePath, noteName);
+            console.log(`✅ Sound loaded into manager:`, sound.id, sound.name);
 
-          const soundWithGateMode = {
-            ...sound,
-            settings: {
-              ...sound.settings,
-              playMode: 'gate' as const,
-            },
-            tabId: activeTabId,
-            slotPosition: { row: i, col: 0 },
-          };
+            await audioEngineRef.current.loadSound(sound);
+            console.log(`✅ Sound loaded into audio engine:`, sound.id);
 
-          dispatch(addSound(soundWithGateMode));
+            // Restore MIDI mapping if it existed for this position
+            const savedMidiMapping = midiMappingsByRow.get(i);
+            if (savedMidiMapping) {
+              console.log(`🎹 Restoring MIDI mapping for row ${i}:`, savedMidiMapping);
+            }
+
+            const soundWithGateMode = {
+              ...sound,
+              settings: {
+                ...sound.settings,
+                playMode: 'gate' as const,
+              },
+              tabId: activeTabId,
+              slotPosition: { row: i, col: 0 },
+              midiMapping: savedMidiMapping || undefined,
+            };
+
+            // Update sound manager with MIDI mapping
+            if (savedMidiMapping) {
+              soundManagerRef.current.updateSound(sound.id, soundWithGateMode);
+              console.log(`✅ Updated sound manager with MIDI mapping:`, sound.id);
+            }
+
+            dispatch(addSound(soundWithGateMode));
+            console.log(`✅ Sound added to Redux:`, sound.id);
+          } catch (error) {
+            console.error(`❌ Failed to load sound ${noteName}:`, error);
+          }
         }
-
-        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      console.log(`✅ Generated all ${instrument} sounds`);
+      console.log(`✅ Loaded all ${instrument} sounds`);
       dispatch(setDirty(true));
     } catch (error) {
-      console.error('Failed to regenerate sounds:', error);
-      alert(`Failed to regenerate sounds: ${error}`);
+      console.error('Failed to load sounds:', error);
+      alert(`Failed to load sounds: ${error}`);
     }
   };
 
-  // Auto-generate synth sounds for APC KEY25 tabs
+  // Auto-generate synth sounds for APC KEY25 tabs - generate all instruments at startup
   useEffect(() => {
     const generateSoundsForPianoTab = async () => {
       // Find APC KEY25 tabs that don't have sounds yet
@@ -790,39 +830,46 @@ const App: React.FC = () => {
           if (pianoKeys.length >= 25) break;
         }
 
-        // Generate sounds in batches to avoid overwhelming the system
+        // Generate sounds for ALL instruments at startup
+        const instruments: InstrumentType[] = ['piano', 'house', 'flute', 'trumpet'];
+
         try {
-          for (let i = 0; i < pianoKeys.length; i++) {
-            const noteName = pianoKeys[i];
+          for (const instrument of instruments) {
+            console.log(`Generating ${instrument} sounds...`);
 
-            console.log(`Generating sound for ${noteName} (${i + 1}/25)...`);
+            for (let i = 0; i < pianoKeys.length; i++) {
+              const noteName = pianoKeys[i];
 
-            // Generate synth sound
-            const filePath = await generateAndSaveSynthSound(noteName);
+              console.log(`Generating ${instrument} sound for ${noteName} (${i + 1}/25)...`);
 
-            // Add to sound manager with gate mode
-            if (soundManagerRef.current && audioEngineRef.current) {
-              const sound = await soundManagerRef.current.addSound(filePath, noteName);
+              // Generate synth sound for this instrument
+              const filePath = await generateAndSaveSynthSound(noteName, instrument);
 
-              // Load sound into audio engine
-              await audioEngineRef.current.loadSound(sound);
+              // Only add sounds to Redux for the default instrument (piano)
+              // Other instrument files are pre-generated and cached
+              if (instrument === 'piano' && soundManagerRef.current && audioEngineRef.current) {
+                const sound = await soundManagerRef.current.addSound(filePath, noteName);
 
-              // Set to gate mode for piano-style playing
-              const soundWithGateMode = {
-                ...sound,
-                settings: {
-                  ...sound.settings,
-                  playMode: 'gate' as const,
-                },
-                tabId: tab.id,
-                slotPosition: { row: i, col: 0 }, // keyIndex as row
-              };
+                // Load sound into audio engine
+                await audioEngineRef.current.loadSound(sound);
 
-              dispatch(addSound(soundWithGateMode));
+                // Set to gate mode for piano-style playing
+                const soundWithGateMode = {
+                  ...sound,
+                  settings: {
+                    ...sound.settings,
+                    playMode: 'gate' as const,
+                  },
+                  tabId: tab.id,
+                  slotPosition: { row: i, col: 0 }, // keyIndex as row
+                };
+
+                dispatch(addSound(soundWithGateMode));
+              }
+
+              // Small delay between generations to keep UI responsive
+              await new Promise(resolve => setTimeout(resolve, 30));
             }
-
-            // Small delay between generations to keep UI responsive
-            await new Promise(resolve => setTimeout(resolve, 50));
           }
 
           console.log(`✅ Generated all synth sounds for tab: ${tab.name}`);

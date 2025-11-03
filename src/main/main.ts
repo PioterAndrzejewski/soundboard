@@ -254,6 +254,11 @@ function setupIpcHandlers() {
       throw error;
     }
   });
+
+  // Get temp directory path
+  ipcMain.handle('get-temp-dir', async () => {
+    return app.getPath('temp');
+  });
 }
 
 app.whenReady().then(() => {

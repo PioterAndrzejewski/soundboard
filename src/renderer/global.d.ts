@@ -24,6 +24,7 @@ declare global {
       hasAutoSave: () => Promise<boolean>;
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
       saveSynthSound: (noteName: string, audioData: Uint8Array) => Promise<string>;
+      getTempDir: () => Promise<string>;
     };
   }
 }
