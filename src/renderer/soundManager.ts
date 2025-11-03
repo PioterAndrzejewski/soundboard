@@ -35,7 +35,10 @@ export class SoundManager {
       if (!sound.midiMapping) return;
 
       const mapping = sound.midiMapping;
+
+      // Handle note-based mappings (buttons/keys)
       if (
+        mapping.note !== undefined &&
         message.deviceId === mapping.deviceId &&
         message.channel === mapping.channel &&
         message.note === mapping.note
@@ -44,6 +47,33 @@ export class SoundManager {
           this.handleNoteOn(sound, message.value);
         } else if (message.type === 'noteoff') {
           this.handleNoteOff(sound);
+        }
+      }
+
+      // Handle CC-based mappings (knobs/faders)
+      if (
+        mapping.ccNumber !== undefined &&
+        message.type === 'cc' &&
+        message.deviceId === mapping.deviceId &&
+        message.channel === mapping.channel &&
+        message.ccNumber === mapping.ccNumber
+      ) {
+        // For AKAI APC RIGHT knobs: value 1 = turn right (play forward), value 127 = turn left (play backward)
+        if (message.value === 1) {
+          // Turn right - play forward
+          this.audioEngine.playSound(sound, 127).catch((error) => {
+            console.error(`Failed to play sound ${sound.name}:`, error);
+          });
+        } else if (message.value === 127) {
+          // Turn left - play backward
+          this.audioEngine.playSoundReverse(sound, 127).catch((error) => {
+            console.error(`Failed to play sound ${sound.name} in reverse:`, error);
+          });
+        }
+
+        // Notify that sound was triggered
+        if (this.onSoundTriggeredCallback) {
+          this.onSoundTriggeredCallback(sound.id);
         }
       }
     });
@@ -101,8 +131,13 @@ export class SoundManager {
     }
   }
 
-  private getMappingKey(mapping: { deviceId: string; note: number; channel: number }): string {
-    return `${mapping.deviceId}:${mapping.channel}:${mapping.note}`;
+  private getMappingKey(mapping: { deviceId: string; note?: number; ccNumber?: number; channel: number }): string {
+    if (mapping.note !== undefined) {
+      return `${mapping.deviceId}:${mapping.channel}:note:${mapping.note}`;
+    } else if (mapping.ccNumber !== undefined) {
+      return `${mapping.deviceId}:${mapping.channel}:cc:${mapping.ccNumber}`;
+    }
+    return `${mapping.deviceId}:${mapping.channel}`;
   }
 
   public async addSound(filePath: string, name: string): Promise<Sound> {

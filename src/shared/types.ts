@@ -5,7 +5,8 @@ export type PlayMode = 'trigger' | 'gate' | 'loop';
 export interface MidiMapping {
   deviceId: string;
   deviceName: string;
-  note: number; // MIDI note number (0-127)
+  note?: number; // MIDI note number (0-127) - for buttons/keys
+  ccNumber?: number; // Control Change number (0-127) - for knobs/faders
   channel: number; // MIDI channel (0-15)
 }
 
@@ -94,7 +95,7 @@ export interface AppState {
 }
 
 // Tab definition
-export type TabLayoutType = 'free' | 'apc-mini' | 'apc-key25' | 'apc-key';
+export type TabLayoutType = 'free' | 'apc-mini' | 'apc-key25' | 'apc-key' | 'apc-right';
 
 export interface Tab {
   id: string;
@@ -102,6 +103,12 @@ export interface Tab {
   color: string;
   order: number;
   layoutType?: TabLayoutType; // 'free' (default) or 'apc-mini'
+  midiMapping?: {
+    deviceId: string;
+    deviceName: string;
+    note: number;
+    channel: number;
+  };
 }
 
 // Project data structure for save/load

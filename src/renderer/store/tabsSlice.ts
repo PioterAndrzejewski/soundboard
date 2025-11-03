@@ -35,6 +35,8 @@ const tabsSlice = createSlice({
         tabName = 'APC KEY25';
       } else if (layoutType === 'apc-key') {
         tabName = 'APC KEY';
+      } else if (layoutType === 'apc-right') {
+        tabName = 'APC RIGHT';
       }
       const newTab: Tab = {
         id: uuidv4(),

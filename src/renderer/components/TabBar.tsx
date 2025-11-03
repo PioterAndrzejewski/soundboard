@@ -26,7 +26,7 @@ const TabBar: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  const handleCreateTab = (layoutType: 'free' | 'apc-mini' | 'apc-key25' | 'apc-key') => {
+  const handleCreateTab = (layoutType: 'free' | 'apc-mini' | 'apc-key25' | 'apc-key' | 'apc-right') => {
     dispatch(addTab({ layoutType, shouldGenerateSounds: layoutType === 'apc-key25' }));
     setShowCreateModal(false);
   };
@@ -114,11 +114,11 @@ const TabBar: React.FC = () => {
       {/* Create Tab Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-dark-700 rounded-lg p-6 w-[900px] border border-dark-600">
+          <div className="bg-dark-700 rounded-lg p-6 w-[1200px] border border-dark-600">
             <h2 className="text-lg font-semibold mb-4">Create New Tab</h2>
             <p className="text-sm text-dark-300 mb-6">Choose a layout for your new tab:</p>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-6">
               {/* Empty Page Option */}
               <button
                 onClick={() => handleCreateTab('free')}
@@ -242,6 +242,43 @@ const TabBar: React.FC = () => {
                     {[...Array(9)].map((_, i) => (
                       <div key={i} className="flex-1 aspect-[2.5/1] bg-green-600" />
                     ))}
+                  </div>
+                </div>
+              </button>
+
+              {/* APC RIGHT Layout Option */}
+              <button
+                onClick={() => handleCreateTab('apc-right')}
+                className="p-4 bg-dark-600 hover:bg-dark-500 border-2 border-dark-500 hover:border-blue-500 rounded-lg transition-all text-left"
+              >
+                <div className="text-base font-medium mb-2">APC RIGHT Layout</div>
+                <div className="text-xs text-dark-300 mb-3">
+                  8 knobs (bidirectional) + 5 buttons + 1 button. AKAI APC RIGHT controller.
+                </div>
+                <div className="flex flex-col gap-1">
+                  {/* Knobs preview - 2 rows of 4 */}
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex gap-0.5 justify-center">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={`k1-${i}`} className="w-4 h-4 rounded-full bg-purple-600" />
+                      ))}
+                    </div>
+                    <div className="flex gap-0.5 justify-center">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={`k2-${i}`} className="w-4 h-4 rounded-full bg-purple-600" />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Buttons preview */}
+                  <div className="flex flex-col gap-0.5 mt-1">
+                    <div className="flex gap-0.5 justify-center">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={`b1-${i}`} className="w-4 h-2 bg-blue-600 rounded-sm" />
+                      ))}
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="w-4 h-2 bg-blue-600 rounded-sm" />
+                    </div>
                   </div>
                 </div>
               </button>

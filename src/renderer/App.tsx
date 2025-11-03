@@ -31,6 +31,7 @@ import SoundsGrid from "./components/SoundsGrid";
 import APCMiniLayout from "./components/APCMiniLayout";
 import APCKey25Layout from "./components/APCKey25Layout";
 import APCKeyLayout from "./components/APCKeyLayout";
+import APCRightLayout from "./components/APCRightLayout";
 import SoundSettingsModal from "./components/SoundSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
@@ -631,7 +632,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAssignSoundToSlot = async (row: number, col: number, section: 'grid' | 'bottom' | 'side' | 'piano' | 'right') => {
+  const handleAssignSoundToSlot = async (row: number, col: number, section: 'grid' | 'bottom' | 'side' | 'piano' | 'right' | 'knobs' | 'buttons') => {
     try {
       const filePath = await window.electronAPI.selectSoundFile();
       if (filePath && soundManagerRef.current) {
@@ -652,6 +653,8 @@ const App: React.FC = () => {
         // Side: row 200-207 or 300, col 0 (APC MINI)
         // Right: row 400-404, col 0 (APC KEY)
         // Piano: row as keyIndex (0-24), col 0
+        // Knobs: row as passed (0-7 for APC RIGHT knobs), col 0
+        // Buttons: row as passed (100-200 for APC RIGHT buttons), col 0
         let adjustedRow = row;
         let adjustedCol = col;
 
@@ -676,6 +679,10 @@ const App: React.FC = () => {
           adjustedCol = 0;
         } else if (section === 'piano') {
           // For piano keys, use row as-is (keyIndex 0-24)
+          adjustedRow = row;
+          adjustedCol = 0;
+        } else if (section === 'knobs' || section === 'buttons') {
+          // For APC RIGHT knobs and buttons, use row as-is
           adjustedRow = row;
           adjustedCol = 0;
         }
@@ -947,6 +954,24 @@ const App: React.FC = () => {
               } else if (currentLayout === 'apc-key') {
                 return (
                   <APCKeyLayout
+                    tabId={activeTabId || ''}
+                    sounds={filteredSounds}
+                    onAssignSound={handleAssignSoundToSlot}
+                    onPlaySound={handlePlaySound}
+                    onRemoveSound={handleRemoveSound}
+                    onEditSound={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(openSettingsModal());
+                    }}
+                    onStartMidiMapping={(soundId) => {
+                      dispatch(setSelectedSound(soundId));
+                      dispatch(startMidiListening('sound'));
+                    }}
+                  />
+                );
+              } else if (currentLayout === 'apc-right') {
+                return (
+                  <APCRightLayout
                     tabId={activeTabId || ''}
                     sounds={filteredSounds}
                     onAssignSound={handleAssignSoundToSlot}
