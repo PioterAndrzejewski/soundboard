@@ -1,12 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
-
-export interface Tab {
-  id: string;
-  name: string;
-  color: string;
-  order: number;
-}
+import { Tab, TabLayoutType } from '../../shared/types';
 
 interface TabsState {
   tabs: Tab[];
@@ -22,6 +16,7 @@ const initialState: TabsState = {
       name: 'Main',
       color: '#3b82f6', // blue
       order: 0,
+      layoutType: 'free',
     },
   ],
   activeTabId: defaultTabId,
@@ -31,12 +26,14 @@ const tabsSlice = createSlice({
   name: 'tabs',
   initialState,
   reducers: {
-    addTab: (state) => {
+    addTab: (state, action: PayloadAction<TabLayoutType | undefined>) => {
+      const layoutType = action.payload || 'free';
       const newTab: Tab = {
         id: uuidv4(),
-        name: `Tab ${state.tabs.length + 1}`,
+        name: layoutType === 'apc-mini' ? 'APC MINI' : `Tab ${state.tabs.length + 1}`,
         color: '#6b7280', // gray
         order: state.tabs.length,
+        layoutType,
       };
       state.tabs.push(newTab);
       state.activeTabId = newTab.id;

@@ -9,6 +9,7 @@ const TabBar: React.FC = () => {
   const activeTabId = useAppSelector(state => state.tabs.activeTabId);
   const [editingName, setEditingName] = useState('');
   const [settingsModalTabId, setSettingsModalTabId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const predefinedColors = [
     '#3b82f6', // blue
@@ -22,7 +23,12 @@ const TabBar: React.FC = () => {
   ];
 
   const handleAddTab = () => {
-    dispatch(addTab());
+    setShowCreateModal(true);
+  };
+
+  const handleCreateTab = (layoutType: 'free' | 'apc-mini') => {
+    dispatch(addTab(layoutType));
+    setShowCreateModal(false);
   };
 
   const handleTabClick = (tabId: string) => {
@@ -104,6 +110,77 @@ const TabBar: React.FC = () => {
           + Tab
         </button>
       </div>
+
+      {/* Create Tab Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-dark-700 rounded-lg p-6 w-[600px] border border-dark-600">
+            <h2 className="text-lg font-semibold mb-4">Create New Tab</h2>
+            <p className="text-sm text-dark-300 mb-6">Choose a layout for your new tab:</p>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Empty Page Option */}
+              <button
+                onClick={() => handleCreateTab('free')}
+                className="p-4 bg-dark-600 hover:bg-dark-500 border-2 border-dark-500 hover:border-blue-500 rounded-lg transition-all text-left"
+              >
+                <div className="text-base font-medium mb-2">Empty Sound Page</div>
+                <div className="text-xs text-dark-300 mb-3">
+                  Free-form layout. Add sounds anywhere, drag to reorder.
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="w-12 h-12 bg-dark-500 rounded" />
+                  ))}
+                </div>
+              </button>
+
+              {/* APC MINI Layout Option */}
+              <button
+                onClick={() => handleCreateTab('apc-mini')}
+                className="p-4 bg-dark-600 hover:bg-dark-500 border-2 border-dark-500 hover:border-blue-500 rounded-lg transition-all text-left"
+              >
+                <div className="text-base font-medium mb-2">APC MINI Layout</div>
+                <div className="text-xs text-dark-300 mb-3">
+                  Fixed 8×8 grid + 8 bottom + 9 side buttons. Matches APC MINI controller.
+                </div>
+                <div className="flex flex-col gap-1">
+                  {/* 8x8 grid preview */}
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {[...Array(64)].map((_, i) => (
+                      <div key={i} className="w-3 h-2 bg-blue-600 rounded-sm" />
+                    ))}
+                  </div>
+                  {/* Bottom row + side column preview */}
+                  <div className="flex gap-0.5">
+                    <div className="flex gap-0.5 flex-1">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="w-3 h-3 bg-green-600 rounded-full" />
+                      ))}
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="w-3 h-3 bg-amber-600 rounded-full" />
+                      ))}
+                      <div className="w-3 h-3 bg-red-600" />
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Cancel Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 bg-dark-600 hover:bg-dark-500 rounded text-sm transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab Settings Modal */}
       {settingsTab && (

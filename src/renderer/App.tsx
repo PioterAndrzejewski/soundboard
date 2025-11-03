@@ -24,6 +24,7 @@ import { SoundManager } from "./soundManager";
 import Header from "./components/Header";
 import TabBar from "./components/TabBar";
 import SoundsGrid from "./components/SoundsGrid";
+import APCMiniLayout from "./components/APCMiniLayout";
 import SoundSettingsModal from "./components/SoundSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
@@ -624,6 +625,43 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAssignSoundToSlot = async (row: number, col: number, section: 'grid' | 'bottom' | 'side') => {
+    try {
+      const filePath = await window.electronAPI.selectSoundFile();
+      if (filePath && soundManagerRef.current) {
+        const fileName =
+          filePath
+            .split(/[\\/]/)
+            .pop()
+            ?.replace(/\.[^/.]+$/, "") || "Untitled";
+
+        const sound = await soundManagerRef.current.addSound(
+          filePath,
+          fileName
+        );
+
+        // Assign to active tab with slot position
+        const soundWithPosition = {
+          ...sound,
+          tabId: activeTabId || tabs[0]?.id,
+          slotPosition: { row, col },
+        };
+
+        dispatch(addSound(soundWithPosition));
+        dispatch(setDirty(true));
+      }
+    } catch (error: any) {
+      console.error("Failed to assign sound to slot:", error);
+      alert(`Failed to add sound: ${error?.message || error}`);
+    }
+  };
+
+  const handlePlaySound = (soundId: string) => {
+    if (soundManagerRef.current) {
+      soundManagerRef.current.playSound(soundId);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-dark-800 text-dark-50">
       <Header
@@ -642,12 +680,22 @@ const App: React.FC = () => {
         <main className="flex-1 flex flex-col">
           <TabBar />
           <div className="flex-1 overflow-auto p-3">
-            <SoundsGrid
-              sounds={filteredSounds}
-              onRemove={handleRemoveSound}
-              soundManager={soundManagerRef.current}
-              onAddSound={handleAddSound}
-            />
+            {tabs.find(t => t.id === activeTabId)?.layoutType === 'apc-mini' ? (
+              <APCMiniLayout
+                tabId={activeTabId || ''}
+                sounds={filteredSounds}
+                onAssignSound={handleAssignSoundToSlot}
+                onPlaySound={handlePlaySound}
+                onRemoveSound={handleRemoveSound}
+              />
+            ) : (
+              <SoundsGrid
+                sounds={filteredSounds}
+                onRemove={handleRemoveSound}
+                soundManager={soundManagerRef.current}
+                onAddSound={handleAddSound}
+              />
+            )}
           </div>
         </main>
 

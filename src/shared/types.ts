@@ -27,6 +27,7 @@ export interface Sound {
   settings: SoundSettings;
   order: number; // For drag and drop ordering
   tabId?: string; // Tab assignment (optional for backwards compatibility)
+  slotPosition?: { row: number; col: number }; // For fixed layout positions (APC MINI)
 }
 
 export interface MidiDevice {
@@ -93,11 +94,14 @@ export interface AppState {
 }
 
 // Tab definition
+export type TabLayoutType = 'free' | 'apc-mini';
+
 export interface Tab {
   id: string;
   name: string;
   color: string;
   order: number;
+  layoutType?: TabLayoutType; // 'free' (default) or 'apc-mini'
 }
 
 // Project data structure for save/load
