@@ -230,22 +230,6 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
           )}
-          {/* MIDI Mapping Mode Toggle - Icon Only */}
-          <button
-            onClick={() => dispatch(toggleMidiMappingMode())}
-            className={`px-3 py-1.5 rounded text-lg transition-all ${
-              ui.isMidiMappingMode
-                ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
-                : "bg-dark-500 hover:bg-dark-400"
-            }`}
-            title={
-              ui.isMidiMappingMode
-                ? "Exit MIDI mapping mode"
-                : "Enter MIDI mapping mode"
-            }
-          >
-            🎹
-          </button>
         </div>
 
         <button
@@ -253,6 +237,22 @@ const Header: React.FC<HeaderProps> = ({
           className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
         >
           Add Sound
+        </button>
+        {/* MIDI Mapping Mode Toggle - Icon Only */}
+        <button
+          onClick={() => dispatch(toggleMidiMappingMode())}
+          className={`px-3 py-1.5 rounded text-lg transition-all ${
+            ui.isMidiMappingMode
+              ? "bg-purple-600 hover:bg-purple-500 ring-2 ring-purple-400"
+              : "bg-dark-500 hover:bg-dark-400"
+          }`}
+          title={
+            ui.isMidiMappingMode
+              ? "Exit MIDI mapping mode"
+              : "Enter MIDI mapping mode"
+          }
+        >
+          🎹
         </button>
       </div>
     </header>

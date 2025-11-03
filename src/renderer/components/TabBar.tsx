@@ -73,7 +73,7 @@ const TabBar: React.FC = () => {
   };
 
   return (
-    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto">
+    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto relative z-10">
       {tabs.map((tab) => (
         <div
           key={tab.id}
