@@ -144,25 +144,33 @@ const TabBar: React.FC = () => {
                 <div className="text-xs text-dark-300 mb-3">
                   Fixed 8×8 grid + 8 bottom + 9 side buttons. Matches APC MINI controller.
                 </div>
-                <div className="flex flex-col gap-1">
-                  {/* 8x8 grid preview */}
-                  <div className="grid grid-cols-8 gap-0.5">
-                    {[...Array(64)].map((_, i) => (
-                      <div key={i} className="w-3 h-2 bg-blue-600 rounded-sm" />
-                    ))}
-                  </div>
-                  {/* Bottom row + side column preview */}
+                <div className="flex flex-col gap-0.5">
+                  {/* Top section: 8x8 grid + side column preview */}
                   <div className="flex gap-0.5">
-                    <div className="flex gap-0.5 flex-1">
-                      {[...Array(8)].map((_, i) => (
-                        <div key={i} className="w-3 h-3 bg-green-600 rounded-full" />
+                    {/* 8x8 grid preview */}
+                    <div className="grid grid-cols-8 gap-[1px] flex-1">
+                      {[...Array(64)].map((_, i) => (
+                        <div key={i} className="aspect-[2.5/1] bg-blue-600" />
                       ))}
                     </div>
-                    <div className="flex flex-col gap-0.5">
+                    {/* Right side column */}
+                    <div className="flex flex-col gap-[1px]" style={{ width: '12.5%' }}>
                       {[...Array(8)].map((_, i) => (
-                        <div key={i} className="w-3 h-3 bg-amber-600 rounded-full" />
+                        <div key={i} className="aspect-[2.5/1] bg-green-600 rounded-sm" />
                       ))}
-                      <div className="w-3 h-3 bg-red-600" />
+                    </div>
+                  </div>
+                  {/* Bottom section: 8 rounded buttons + square button */}
+                  <div className="flex gap-0.5">
+                    {/* Bottom row */}
+                    <div className="grid grid-cols-8 gap-[1px] flex-1">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="aspect-[2.5/1] bg-green-600 rounded-sm" />
+                      ))}
+                    </div>
+                    {/* Square button */}
+                    <div style={{ width: '12.5%' }}>
+                      <div className="aspect-[2.5/1] bg-red-600" />
                     </div>
                   </div>
                 </div>
