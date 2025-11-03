@@ -14,7 +14,14 @@ declare global {
       saveProject: (project: Project, filePath?: string) => Promise<string>;
       saveProjectAs: (project: Project) => Promise<string>;
       loadProject: () => Promise<{ project: Project; filePath: string } | null>;
+      loadProjectByPath: (filePath: string) => Promise<{ project: Project; filePath: string }>;
       getRecentProjects: () => Promise<string[]>;
+      getLastProjectPath: () => Promise<string | undefined>;
+      setLastProjectPath: (filePath: string) => Promise<any>;
+      saveAutoSave: (project: Project) => Promise<any>;
+      getAutoSave: () => Promise<{ project: Project; timestamp: string } | null>;
+      clearAutoSave: () => Promise<any>;
+      hasAutoSave: () => Promise<boolean>;
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
     };
   }
