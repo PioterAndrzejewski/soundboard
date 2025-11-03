@@ -24,14 +24,22 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
 
   // Find sound at specific position
   // We need to create unique identifiers for each section
-  // Grid: row 0-7, col 0-7
+  // Grid: row 0-7, col 0-7 (use actual row and col)
   // Bottom: row 100, col 0-7
   // Side: row 200-207, col 0
   // Square: row 300, col 0
   const getSoundAtPosition = (row: number, col: number, section: 'grid' | 'bottom' | 'side'): Sound | undefined => {
-    let adjustedRow = row;
+    if (section === 'grid') {
+      // For grid, use actual row and col
+      return sounds.find(s =>
+        s.slotPosition?.row === row &&
+        s.slotPosition?.col === col &&
+        s.tabId === tabId
+      );
+    }
 
-    // Adjust row based on section to make positions unique
+    // For bottom and side, use adjusted row and col 0
+    let adjustedRow = row;
     if (section === 'bottom') {
       adjustedRow = 100 + col; // 100-107
     } else if (section === 'side') {
@@ -40,7 +48,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
 
     return sounds.find(s =>
       s.slotPosition?.row === adjustedRow &&
-      s.slotPosition?.col === 0 && // Use col 0 for all in adjusted system
+      s.slotPosition?.col === 0 &&
       s.tabId === tabId
     );
   };
@@ -71,17 +79,15 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
       >
         {sound ? (
           <>
-            <div className="text-xs font-medium truncate">{sound.name}</div>
-            <div className="flex gap-1 mt-auto">
-              {sound.midiMapping && (
-                <span className="text-[10px] bg-green-600 px-1 rounded">🎹</span>
-              )}
+            {/* Action buttons in top right corner */}
+            <div className="absolute top-1 right-1 flex gap-0.5">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onEditSound?.(sound.id);
                 }}
                 className="text-[10px] bg-dark-600 hover:bg-dark-500 px-1 rounded"
+                title="Edit"
               >
                 ✎
               </button>
@@ -91,10 +97,19 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
                   onRemoveSound(sound.id);
                 }}
                 className="text-[10px] bg-red-600 hover:bg-red-500 px-1 rounded"
+                title="Remove"
               >
                 ✕
               </button>
             </div>
+
+            {/* Name and MIDI indicator */}
+            <div className="text-xs font-medium truncate">{sound.name}</div>
+            {sound.midiMapping && (
+              <div className="text-[9px] text-green-300 truncate mt-auto">
+                🎹 {sound.midiMapping.note} Ch{sound.midiMapping.channel + 1}
+              </div>
+            )}
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-dark-400 text-2xl">
@@ -114,7 +129,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-square border-2 rounded transition-all cursor-pointer flex flex-col items-center justify-center p-2
+          relative w-full aspect-square border-2 rounded transition-all cursor-pointer flex flex-col p-2
           ${sound ? 'border-green-500 bg-green-900 hover:bg-green-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-green-400' : ''}
         `}
@@ -130,9 +145,41 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
         title={sound ? `${sound.name} (Click to play)` : 'Click to assign sound'}
       >
         {sound ? (
-          <div className="text-[10px] font-medium text-center truncate w-full">{sound.name}</div>
+          <>
+            {/* Action buttons in top right corner */}
+            <div className="absolute top-1 right-1 flex gap-0.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditSound?.(sound.id);
+                }}
+                className="text-[10px] bg-dark-600 hover:bg-dark-500 px-1 rounded"
+                title="Edit"
+              >
+                ✎
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveSound(sound.id);
+                }}
+                className="text-[10px] bg-red-600 hover:bg-red-500 px-1 rounded"
+                title="Remove"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Name and MIDI indicator */}
+            <div className="text-[10px] font-medium truncate mt-auto">{sound.name}</div>
+            {sound.midiMapping && (
+              <div className="text-[9px] text-green-300 truncate">
+                🎹 {sound.midiMapping.note} Ch{sound.midiMapping.channel + 1}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="text-dark-400 text-xl">+</div>
+          <div className="absolute inset-0 flex items-center justify-center text-dark-400 text-xl">+</div>
         )}
       </div>
     );
@@ -147,7 +194,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-square border-2 transition-all cursor-pointer flex flex-col items-center justify-center p-2
+          relative w-full aspect-square border-2 transition-all cursor-pointer flex flex-col p-2
           ${sound ? 'border-red-500 bg-red-900 hover:bg-red-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-red-400' : ''}
         `}
@@ -163,9 +210,41 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
         title={sound ? `${sound.name} (Click to play)` : 'Click to assign sound'}
       >
         {sound ? (
-          <div className="text-[10px] font-medium text-center truncate w-full">{sound.name}</div>
+          <>
+            {/* Action buttons in top right corner */}
+            <div className="absolute top-1 right-1 flex gap-0.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditSound?.(sound.id);
+                }}
+                className="text-[10px] bg-dark-600 hover:bg-dark-500 px-1 rounded"
+                title="Edit"
+              >
+                ✎
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveSound(sound.id);
+                }}
+                className="text-[10px] bg-red-600 hover:bg-red-500 px-1 rounded"
+                title="Remove"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Name and MIDI indicator */}
+            <div className="text-[10px] font-medium truncate mt-auto">{sound.name}</div>
+            {sound.midiMapping && (
+              <div className="text-[9px] text-green-300 truncate">
+                🎹 {sound.midiMapping.note} Ch{sound.midiMapping.channel + 1}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="text-dark-400 text-xl">+</div>
+          <div className="absolute inset-0 flex items-center justify-center text-dark-400 text-xl">+</div>
         )}
       </div>
     );

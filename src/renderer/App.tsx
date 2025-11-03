@@ -641,21 +641,29 @@ const App: React.FC = () => {
         );
 
         // Adjust row based on section to make positions unique
-        // Grid: row 0-7, col 0-7
-        // Bottom: row 100-107
-        // Side: row 200-207 or 300 for square
+        // Grid: row 0-7, col 0-7 (keep actual values)
+        // Bottom: row 100-107, col 0
+        // Side: row 200-207 or 300, col 0
         let adjustedRow = row;
-        if (section === 'bottom') {
+        let adjustedCol = col;
+
+        if (section === 'grid') {
+          // Keep row and col as-is for grid
+          adjustedRow = row;
+          adjustedCol = col;
+        } else if (section === 'bottom') {
           adjustedRow = 100 + col;
+          adjustedCol = 0;
         } else if (section === 'side') {
           adjustedRow = 200 + row;
+          adjustedCol = 0;
         }
 
         // Assign to active tab with slot position
         const soundWithPosition = {
           ...sound,
           tabId: activeTabId || tabs[0]?.id,
-          slotPosition: { row: adjustedRow, col: section === 'grid' ? col : 0 },
+          slotPosition: { row: adjustedRow, col: adjustedCol },
         };
 
         dispatch(addSound(soundWithPosition));
