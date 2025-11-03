@@ -9,6 +9,7 @@ interface PlayingSound {
   isGateMode: boolean;
   settings: SoundSettings;
   fadeOutTimeout?: ReturnType<typeof setTimeout>;
+  blobUrl?: string; // Store blob URL for cleanup
 }
 
 export class AudioEngine {
@@ -269,20 +270,30 @@ export class AudioEngine {
     console.log(`⚡ Preloading sound: ${sound.name}`);
     const audio = new Audio();
     audio.preload = 'auto';
-    audio.src = this.getFileUrl(sound.filePath);
+    audio.src = await this.getFileUrl(sound.filePath);
     await new Promise((resolve, reject) => {
       audio.oncanplaythrough = resolve;
       audio.onerror = reject;
     });
   }
 
-  private getFileUrl(filePath: string): string {
-    // Convert Windows paths to file:// URL
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    if (/^[A-Za-z]:\//.test(normalizedPath)) {
-      return `file:///${normalizedPath}`;
+  private async getFileUrl(filePath: string): Promise<string> {
+    try {
+      // Load the audio file via IPC to avoid file:// security restrictions
+      const arrayBuffer = await window.electronAPI.readAudioFile(filePath);
+
+      // Convert ArrayBuffer to Blob
+      const blob = new Blob([arrayBuffer]);
+
+      // Create a blob URL
+      const blobUrl = URL.createObjectURL(blob);
+
+      console.log(`✅ Created blob URL for: ${filePath}`);
+      return blobUrl;
+    } catch (error) {
+      console.error(`❌ Failed to load audio file: ${filePath}`, error);
+      throw error;
     }
-    return `file://${normalizedPath}`;
   }
 
   public async playSound(sound: Sound, velocity: number = 127): Promise<string> {
@@ -321,7 +332,8 @@ export class AudioEngine {
 
     // Create audio element
     const audio = new Audio();
-    audio.src = this.getFileUrl(sound.filePath);
+    const blobUrl = await this.getFileUrl(sound.filePath);
+    audio.src = blobUrl;
     audio.loop = sound.settings.playMode === 'loop';
 
     // Set output device if specified
@@ -374,6 +386,7 @@ export class AudioEngine {
       startTime: Date.now(),
       isGateMode: sound.settings.playMode === 'gate',
       settings: sound.settings,
+      blobUrl,
     };
 
     this.playingSounds.set(playingId, playingSound);
@@ -537,6 +550,10 @@ export class AudioEngine {
     if (playingSound) {
       if (playingSound.fadeOutTimeout) {
         clearTimeout(playingSound.fadeOutTimeout);
+      }
+      // Revoke blob URL to free memory
+      if (playingSound.blobUrl) {
+        URL.revokeObjectURL(playingSound.blobUrl);
       }
       playingSound.audio.src = ''; // Release audio resources
       playingSound.audio.remove();
