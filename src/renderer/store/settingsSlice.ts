@@ -8,9 +8,9 @@ const initialState: AppSettings = {
   effects: {
     speed: 1,
     pan: 0,
-    filterLow: 1,
-    filterMid: 1,
-    filterHigh: 1,
+    filterLow: 0.5,  // 50% = 0dB (neutral)
+    filterMid: 0.5,  // 50% = 0dB (neutral)
+    filterHigh: 0.5, // 50% = 0dB (neutral)
     distortion: 0,
     reverb: 0,
     delay: 0,
@@ -36,9 +36,9 @@ const settingsSlice = createSlice({
         state.effects = {
           speed: 1,
           pan: 0,
-          filterLow: 1,
-          filterMid: 1,
-          filterHigh: 1,
+          filterLow: 0.5,  // 50% = 0dB (neutral)
+          filterMid: 0.5,  // 50% = 0dB (neutral)
+          filterHigh: 0.5, // 50% = 0dB (neutral)
           distortion: 0,
           reverb: 0,
           delay: 0,

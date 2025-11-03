@@ -150,18 +150,19 @@ export class AudioEngine {
     }
 
     // Update filters (3-band EQ)
+    // Map 0.0-1.0 to -24dB to +24dB, with 0.5 being 0dB (no change)
     if (this.lowShelfFilter) {
-      const lowGain = (effects.filterLow - 1) * 24; // -24dB to 0dB
+      const lowGain = (effects.filterLow - 0.5) * 48; // 0.5 = 0dB
       this.lowShelfFilter.gain.value = lowGain;
     }
 
     if (this.midPeakFilter) {
-      const midGain = (effects.filterMid - 1) * 24;
+      const midGain = (effects.filterMid - 0.5) * 48; // 0.5 = 0dB
       this.midPeakFilter.gain.value = midGain;
     }
 
     if (this.highShelfFilter) {
-      const highGain = (effects.filterHigh - 1) * 24;
+      const highGain = (effects.filterHigh - 0.5) * 48; // 0.5 = 0dB
       this.highShelfFilter.gain.value = highGain;
     }
 
