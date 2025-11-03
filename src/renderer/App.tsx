@@ -20,7 +20,7 @@ import {
   openSettingsModal,
   startMidiListening,
 } from "./store/uiSlice";
-import { setTabs, setTabMidiMapping, setActiveTab } from "./store/tabsSlice";
+import { setTabs, setTabMidiMapping, setActiveTab, setTabRowLabel } from "./store/tabsSlice";
 import { AudioEngine } from "./audioEngine";
 import { MidiHandler } from "./midiHandler";
 import { SoundManager } from "./soundManager";
@@ -1088,9 +1088,13 @@ const App: React.FC = () => {
               const currentLayout = tabs.find(t => t.id === activeTabId)?.layoutType;
 
               if (currentLayout === 'apc-mini') {
+                const currentTab = tabs.find(t => t.id === activeTabId);
+                if (!currentTab) return null;
+
                 return (
                   <APCMiniLayout
                     tabId={activeTabId || ''}
+                    tab={currentTab}
                     sounds={filteredSounds}
                     onAssignSound={handleAssignSoundToSlot}
                     onPlaySound={handlePlaySound}
@@ -1102,6 +1106,9 @@ const App: React.FC = () => {
                     onStartMidiMapping={(soundId) => {
                       dispatch(setSelectedSound(soundId));
                       dispatch(startMidiListening('sound'));
+                    }}
+                    onUpdateRowLabel={(rowIndex, label) => {
+                      dispatch(setTabRowLabel({ tabId: activeTabId || '', rowIndex, label }));
                     }}
                   />
                 );
@@ -1125,9 +1132,13 @@ const App: React.FC = () => {
                   />
                 );
               } else if (currentLayout === 'apc-key') {
+                const currentTab = tabs.find(t => t.id === activeTabId);
+                if (!currentTab) return null;
+
                 return (
                   <APCKeyLayout
                     tabId={activeTabId || ''}
+                    tab={currentTab}
                     sounds={filteredSounds}
                     onAssignSound={handleAssignSoundToSlot}
                     onPlaySound={handlePlaySound}
@@ -1139,6 +1150,9 @@ const App: React.FC = () => {
                     onStartMidiMapping={(soundId) => {
                       dispatch(setSelectedSound(soundId));
                       dispatch(startMidiListening('sound'));
+                    }}
+                    onUpdateRowLabel={(rowIndex, label) => {
+                      dispatch(setTabRowLabel({ tabId: activeTabId || '', rowIndex, label }));
                     }}
                   />
                 );

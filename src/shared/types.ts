@@ -104,6 +104,7 @@ export interface Tab {
   color: string;
   order: number;
   layoutType?: TabLayoutType; // 'free' (default) or 'apc-mini'
+  rowLabels?: string[]; // Labels for each row (for APC layouts)
   midiMapping?: {
     deviceId: string;
     deviceName: string;

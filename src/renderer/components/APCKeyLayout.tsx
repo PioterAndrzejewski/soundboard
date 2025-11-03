@@ -1,26 +1,31 @@
 import React, { useState } from 'react';
-import { Sound } from '../../shared/types';
+import { Sound, Tab } from '../../shared/types';
 
 interface APCKeyLayoutProps {
   tabId: string;
+  tab: Tab;
   sounds: Sound[];
   onAssignSound: (row: number, col: number, section: 'grid' | 'right' | 'bottom') => void;
   onPlaySound: (soundId: string) => void;
   onRemoveSound: (soundId: string) => void;
   onEditSound?: (soundId: string) => void;
   onStartMidiMapping?: (soundId: string) => void;
+  onUpdateRowLabel?: (rowIndex: number, label: string) => void;
 }
 
 const APCKeyLayout: React.FC<APCKeyLayoutProps> = ({
   tabId,
+  tab,
   sounds,
   onAssignSound,
   onPlaySound,
   onRemoveSound,
   onEditSound,
   onStartMidiMapping,
+  onUpdateRowLabel,
 }) => {
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
+  const [editingRow, setEditingRow] = useState<number | null>(null);
 
   // Position mapping for APC KEY layout:
   // Grid: row 0-4, col 0-7 (use actual row and col)
@@ -219,8 +224,46 @@ const APCKeyLayout: React.FC<APCKeyLayoutProps> = ({
   return (
     <div className="p-1 h-full flex items-start justify-center overflow-auto">
       <div className="flex flex-col gap-1">
-        {/* Top section: 8x5 grid + right column (5 buttons) */}
+        {/* Top section: row labels + 8x5 grid + right column (5 buttons) */}
         <div className="flex gap-1">
+          {/* Row labels */}
+          <div className="flex flex-col gap-[1px]" style={{ width: '80px' }}>
+            {[...Array(5)].map((_, row) => {
+              const label = tab.rowLabels?.[row] || '';
+              const isEditing = editingRow === row;
+
+              return (
+                <div
+                  key={`label-${row}`}
+                  className="flex items-center justify-end pr-2 text-xs text-gray-400"
+                  style={{ height: '118px' }}
+                >
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={label}
+                      onChange={(e) => onUpdateRowLabel?.(row, e.target.value)}
+                      onBlur={() => setEditingRow(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') setEditingRow(null);
+                      }}
+                      autoFocus
+                      className="w-full px-1 py-0.5 bg-dark-700 border border-dark-500 rounded text-right focus:outline-none focus:border-blue-500"
+                    />
+                  ) : (
+                    <div
+                      onClick={() => setEditingRow(row)}
+                      className="w-full cursor-pointer hover:bg-dark-700 px-1 py-0.5 rounded text-right"
+                      title="Click to edit label"
+                    >
+                      {label || `Row ${row + 1}`}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           {/* Main 8x5 Grid */}
           <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px' }}>
             {[...Array(5)].map((_, row) =>

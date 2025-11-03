@@ -96,6 +96,15 @@ const tabsSlice = createSlice({
         tab.midiMapping = action.payload.mapping;
       }
     },
+    setTabRowLabel: (state, action: PayloadAction<{ tabId: string; rowIndex: number; label: string }>) => {
+      const tab = state.tabs.find(t => t.id === action.payload.tabId);
+      if (tab) {
+        if (!tab.rowLabels) {
+          tab.rowLabels = [];
+        }
+        tab.rowLabels[action.payload.rowIndex] = action.payload.label;
+      }
+    },
   },
 });
 
@@ -107,6 +116,7 @@ export const {
   setActiveTab,
   reorderTabs,
   setTabs,
+  setTabRowLabel,
   setTabMidiMapping,
 } = tabsSlice.actions;
 
