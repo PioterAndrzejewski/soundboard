@@ -728,18 +728,25 @@ const App: React.FC = () => {
             // Generate synth sound
             const filePath = await generateAndSaveSynthSound(noteName);
 
-            // Add to sound manager
+            // Add to sound manager with gate mode
             if (soundManagerRef.current && audioEngineRef.current) {
               const sound = await soundManagerRef.current.addSound(filePath, noteName);
 
-              // Assign to piano key slot
-              const soundWithPosition = {
+              // Load sound into audio engine
+              await audioEngineRef.current.loadSound(sound);
+
+              // Set to gate mode for piano-style playing
+              const soundWithGateMode = {
                 ...sound,
+                settings: {
+                  ...sound.settings,
+                  playMode: 'gate' as const,
+                },
                 tabId: tab.id,
                 slotPosition: { row: i, col: 0 }, // keyIndex as row
               };
 
-              dispatch(addSound(soundWithPosition));
+              dispatch(addSound(soundWithGateMode));
             }
 
             // Small delay between generations to keep UI responsive
