@@ -7,7 +7,6 @@ const TabBar: React.FC = () => {
   const dispatch = useAppDispatch();
   const tabs = useAppSelector(state => state.tabs.tabs);
   const activeTabId = useAppSelector(state => state.tabs.activeTabId);
-  const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [settingsModalTabId, setSettingsModalTabId] = useState<string | null>(null);
 

@@ -41,8 +41,33 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
   const dragStartY = useRef(0);
   const dragStartValue = useRef(0);
 
+  // Calculate angle based on value and default position
+  // For effects with default=0 (dist, reverb, delay): use standard mapping
+  // For effects with default at center: remap so default appears at top (0deg)
+  const normalizedDefault = (defaultValue - min) / (max - min);
   const normalizedValue = (value - min) / (max - min);
-  const angle = -135 + normalizedValue * 270; // -135deg to +135deg
+
+  let angle: number;
+
+  // Check if default is at minimum (0 on normalized scale)
+  if (normalizedDefault === 0) {
+    // Standard mapping: min=-135deg, max=+135deg
+    angle = -135 + normalizedValue * 270;
+  } else {
+    // Default is in the middle - remap so default is at 0deg (top center)
+    // Map the normalized value range [0, 1] to angle range where default is at 0deg
+    const valueRelativeToDefault = normalizedValue - normalizedDefault;
+    const rangeToLeft = normalizedDefault; // Range from min to default
+    const rangeToRight = 1 - normalizedDefault; // Range from default to max
+
+    if (normalizedValue < normalizedDefault) {
+      // Value is below default: map to [-135, 0]
+      angle = -135 + (normalizedValue / normalizedDefault) * 135;
+    } else {
+      // Value is at or above default: map to [0, +135]
+      angle = 0 + ((normalizedValue - normalizedDefault) / rangeToRight) * 135;
+    }
+  }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isMappingMode && onStartMapping) {
