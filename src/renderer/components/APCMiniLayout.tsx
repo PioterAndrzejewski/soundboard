@@ -62,7 +62,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-[2/1] border-2 transition-all cursor-pointer flex flex-col p-2
+          relative w-full aspect-[2.5/1] border-2 transition-all cursor-pointer flex flex-col p-2
           ${sound ? 'border-blue-500 bg-blue-900 hover:bg-blue-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-blue-400' : ''}
         `}
@@ -226,7 +226,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
       <div
         key={slotKey}
         className={`
-          relative w-full aspect-[2/1] border-2 transition-all cursor-pointer flex flex-col p-2
+          relative w-full aspect-[2.5/1] border-2 transition-all cursor-pointer flex flex-col p-2
           ${sound ? 'border-red-500 bg-red-900 hover:bg-red-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
           ${isHovered ? 'ring-2 ring-red-400' : ''}
         `}
@@ -300,31 +300,31 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
 
   return (
     <div className="p-4 h-full flex items-start justify-center overflow-auto">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
         {/* Top section: 8x8 grid + side column */}
-        <div className="flex gap-4">
+        <div className="flex gap-1">
           {/* Main 8x8 Grid */}
-          <div className="grid grid-cols-8 gap-2" style={{ width: '960px' }}>
+          <div className="grid grid-cols-8 gap-0.5" style={{ width: '960px' }}>
             {[...Array(8)].map((_, row) =>
               [...Array(8)].map((_, col) => renderGridButton(row, col))
             )}
           </div>
 
           {/* Right side column: 8 rounded buttons */}
-          <div className="flex flex-col gap-2" style={{ width: '120px' }}>
+          <div className="flex flex-col gap-0.5" style={{ width: '120px' }}>
             {[...Array(8)].map((_, row) => renderRoundButton(row, 0, 'side'))}
           </div>
         </div>
 
         {/* Bottom section: 8 rounded buttons + square button */}
-        <div className="flex gap-4">
+        <div className="flex gap-1">
           {/* Bottom 8 rounded buttons */}
-          <div className="grid grid-cols-8 gap-2" style={{ width: '960px' }}>
+          <div className="grid grid-cols-8 gap-0.5" style={{ width: '960px' }}>
             {[...Array(8)].map((_, col) => renderRoundButton(0, col, 'bottom'))}
           </div>
 
           {/* Bottom-right square button */}
-          <div style={{ width: '60px' }}>
+          <div style={{ width: '120px' }}>
             {renderSquareButton(8, 0)}
           </div>
         </div>
