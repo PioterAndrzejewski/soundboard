@@ -10,7 +10,7 @@ interface BottomPanelProps {
 
 type EffectKnobType = keyof EffectsState;
 
-interface SmallKnobProps {
+interface VerticalSliderProps {
   label: string;
   value: number;
   min: number;
@@ -24,7 +24,7 @@ interface SmallKnobProps {
   hasMidiMapping: boolean;
 }
 
-const SmallKnob: React.FC<SmallKnobProps> = ({
+const VerticalSlider: React.FC<VerticalSliderProps> = ({
   label,
   value,
   min,
@@ -41,30 +41,13 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
   const dragStartY = useRef(0);
   const dragStartValue = useRef(0);
 
-  // Calculate angle based on value and default position
-  // For effects with default=0 (dist, reverb, delay): wider range -160 to +160
-  // For effects with default at center: remap so default appears at top (0deg)
-  const normalizedDefault = (defaultValue - min) / (max - min);
+  // Calculate percentage for vertical slider
   const normalizedValue = (value - min) / (max - min);
+  const percentage = normalizedValue * 100;
 
-  let angle: number;
-
-  // Check if default is at minimum (0 on normalized scale)
-  if (normalizedDefault === 0) {
-    // Wider mapping for effects starting at 0: min=-160deg, max=+160deg
-    angle = -160 + normalizedValue * 320;
-  } else {
-    // Default is in the middle - remap so default is at 0deg (top center)
-    // Map the normalized value range [0, 1] to angle range where default is at 0deg
-
-    if (normalizedValue < normalizedDefault) {
-      // Value is below default: map to [-160, 0]
-      angle = -160 + (normalizedValue / normalizedDefault) * 160;
-    } else {
-      // Value is at or above default: map to [0, +160]
-      angle = 0 + ((normalizedValue - normalizedDefault) / (1 - normalizedDefault)) * 160;
-    }
-  }
+  // For visual representation, we need to know where default is
+  const normalizedDefault = (defaultValue - min) / (max - min);
+  const defaultPercentage = normalizedDefault * 100;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isMappingMode && onStartMapping) {
@@ -85,9 +68,17 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
     const sensitivity = (max - min) / 200;
     let newValue = Math.max(min, Math.min(max, dragStartValue.current + deltaY * sensitivity));
 
-    // Apply specific snapping based on the effect type
+    // Apply specific restrictions based on the effect type
+    // Speed: values 0.46-0.54 should be 0.5 (impossible to select)
+    if (label === 'Speed' && newValue >= 0.46 && newValue <= 0.54) {
+      newValue = 0.5;
+    }
+    // Pan: values -0.04 to 0.04 should be 0 (impossible to select)
+    else if (label === 'Pan' && newValue >= -0.04 && newValue <= 0.04) {
+      newValue = 0;
+    }
     // Speed: snap to 1.0 when between 0.95 and 1.05
-    if (label === 'Speed' && newValue >= 0.95 && newValue <= 1.05) {
+    else if (label === 'Speed' && newValue >= 0.95 && newValue <= 1.05) {
       newValue = 1.0;
     }
     // Pan: snap to 0 when between -0.05 and 0.05 (5%)
@@ -134,8 +125,14 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
 
   return (
     <div className={`flex flex-col items-center gap-1.5 ${isMappingMode ? 'cursor-pointer' : ''}`}>
+      {/* Value display */}
+      <div className="text-[10px] text-dark-400 font-mono h-4">
+        {displayValue}{unit}
+      </div>
+
+      {/* Vertical slider */}
       <div
-        className={`relative w-12 h-12 rounded-full bg-dark-600 border transition-all ${
+        className={`relative w-8 h-32 rounded bg-dark-600 border transition-all ${
           isBeingMapped
             ? 'border-green-500 animate-pulse'
             : isMappingMode
@@ -146,34 +143,35 @@ const SmallKnob: React.FC<SmallKnobProps> = ({
         onDoubleClick={handleDoubleClick}
         style={{ cursor: isMappingMode ? 'pointer' : 'ns-resize' }}
       >
-        {/* Center dot */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-2 h-2 bg-dark-400 rounded-full" />
-        </div>
-
-        {/* Indicator line - fixed positioning */}
+        {/* Default position line */}
         <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            transform: `rotate(${angle}deg)`,
-          }}
-        >
-          <div className="w-5 h-0.5 bg-blue-400 rounded-full" style={{ marginLeft: '50%', transformOrigin: 'left center' }} />
-        </div>
+          className="absolute left-0 right-0 h-0.5 bg-dark-400"
+          style={{ bottom: `${defaultPercentage}%` }}
+        />
+
+        {/* Fill from bottom to current value */}
+        <div
+          className="absolute left-0 right-0 bottom-0 bg-blue-600 transition-all"
+          style={{ height: `${percentage}%` }}
+        />
+
+        {/* Slider handle */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 w-6 h-2 bg-blue-400 rounded-full transition-all"
+          style={{ bottom: `calc(${percentage}% - 4px)` }}
+        />
 
         {/* MIDI indicator */}
         {hasMidiMapping && (
-          <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full flex items-center justify-center text-[9px]">
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full flex items-center justify-center text-[9px]">
             🎹
           </div>
         )}
       </div>
 
+      {/* Label */}
       <div className="text-center">
         <div className="text-[11px] text-dark-200 font-medium">{label}</div>
-        <div className="text-[10px] text-dark-400 font-mono">
-          {displayValue}{unit}
-        </div>
       </div>
     </div>
   );
@@ -288,10 +286,10 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ midiHandler }) => {
   return (
     <div className="bg-dark-700 border-t-2 border-dark-500 p-4">
       <div className="flex items-center justify-between gap-6">
-        {/* Left side - Effects knobs */}
+        {/* Left side - Effects sliders */}
         <div className="flex-1 flex items-center justify-between">
           {knobs.map((knob) => (
-            <SmallKnob
+            <VerticalSlider
               key={knob.key}
               label={knob.label}
               value={effects[knob.key]}
