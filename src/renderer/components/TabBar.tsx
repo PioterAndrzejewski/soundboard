@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addTab, removeTab, renameTab, setTabColor, setActiveTab } from '../store/tabsSlice';
 import { reassignSoundsTab } from '../store/soundsSlice';
@@ -10,6 +10,21 @@ const TabBar: React.FC = () => {
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [colorPickerTabId, setColorPickerTabId] = useState<string | null>(null);
+
+  // Close color picker when clicking outside
+  useEffect(() => {
+    if (!colorPickerTabId) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.color-picker-container')) {
+        setColorPickerTabId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [colorPickerTabId]);
 
   const predefinedColors = [
     '#3b82f6', // blue
@@ -73,11 +88,12 @@ const TabBar: React.FC = () => {
   };
 
   return (
-    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto relative z-20">
+    <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto overflow-y-visible relative z-20">
       {tabs.map((tab) => (
         <div
           key={tab.id}
-          className="relative group z-30"
+          className="relative"
+          style={{ zIndex: colorPickerTabId === tab.id ? 9999 : 'auto' }}
         >
           <div
             onClick={() => handleTabClick(tab.id)}
@@ -123,7 +139,7 @@ const TabBar: React.FC = () => {
 
           {/* Color Picker Dropdown */}
           {colorPickerTabId === tab.id && (
-            <div className="absolute top-full left-0 mt-1 bg-dark-700 border border-dark-600 rounded p-2 shadow-lg" style={{ zIndex: 9999 }}>
+            <div className="color-picker-container absolute top-full left-0 mt-1 bg-dark-700 border border-dark-600 rounded p-2 shadow-lg" style={{ zIndex: 9999 }}>
               <div className="text-xs text-dark-300 mb-1.5">Color</div>
               <div className="grid grid-cols-4 gap-1.5">
                 {predefinedColors.map((color) => (
