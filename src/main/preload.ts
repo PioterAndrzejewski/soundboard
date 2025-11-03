@@ -77,6 +77,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTempDir: () =>
     ipcRenderer.invoke('get-temp-dir'),
 
+  // File operations
+  fileExists: (filePath: string) =>
+    ipcRenderer.invoke('file-exists', filePath),
+
   // Menu IPC event listeners
   on: (channel: string, callback: (...args: any[]) => void) => {
     ipcRenderer.on(channel, (_event, ...args) => callback(...args));
@@ -135,6 +139,7 @@ declare global {
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
       saveSynthSound: (noteName: string, audioData: Uint8Array) => Promise<string>;
       getTempDir: () => Promise<string>;
+      fileExists: (filePath: string) => Promise<boolean>;
       on: (channel: string, callback: (...args: any[]) => void) => void;
       removeListener: (channel: string, callback: (...args: any[]) => void) => void;
     };

@@ -324,6 +324,16 @@ function setupIpcHandlers() {
   ipcMain.handle('get-temp-dir', async () => {
     return app.getPath('temp');
   });
+
+  // Check if file exists
+  ipcMain.handle('file-exists', async (event, filePath: string) => {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 app.whenReady().then(() => {

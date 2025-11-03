@@ -1,23 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { updateSound } from '../store/soundsSlice';
-import { closeSettingsModal, startMidiListening, stopMidiListening, setDirty } from '../store/uiSlice';
-import { Sound, MidiMessage } from '../../shared/types';
-import { SoundManager } from '../soundManager';
-import { MidiHandler } from '../midiHandler';
-import WaveformEditor from './WaveformEditor';
+import React, { useState, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { updateSound } from "../store/soundsSlice";
+import {
+  closeSettingsModal,
+  startMidiListening,
+  stopMidiListening,
+  setDirty,
+} from "../store/uiSlice";
+import { Sound, MidiMessage } from "../../shared/types";
+import { SoundManager } from "../soundManager";
+import { MidiHandler } from "../midiHandler";
+import WaveformEditor from "./WaveformEditor";
 
 interface SoundSettingsModalProps {
   soundManager: SoundManager | null;
   midiHandler: MidiHandler | null;
 }
 
-const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, midiHandler }) => {
+const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({
+  soundManager,
+  midiHandler,
+}) => {
   const dispatch = useAppDispatch();
-  const sounds = useAppSelector(state => state.sounds.sounds);
-  const ui = useAppSelector(state => state.ui);
+  const sounds = useAppSelector((state) => state.sounds.sounds);
+  const ui = useAppSelector((state) => state.ui);
 
-  const sound = sounds.find(s => s.id === ui.selectedSoundId);
+  const sound = sounds.find((s) => s.id === ui.selectedSoundId);
   const [editedSound, setEditedSound] = useState<Sound | null>(null);
 
   useEffect(() => {
@@ -27,19 +35,29 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
   }, [sound, ui.isSettingsModalOpen]);
 
   useEffect(() => {
-    if (!midiHandler || !editedSound || !ui.isMidiListening || ui.listeningMode !== 'sound') return;
+    if (
+      !midiHandler ||
+      !editedSound ||
+      !ui.isMidiListening ||
+      ui.listeningMode !== "sound"
+    )
+      return;
 
     const handleMidiMessage = (message: MidiMessage) => {
-      if (message.type === 'noteon') {
-        setEditedSound(prev => prev ? {
-          ...prev,
-          midiMapping: {
-            deviceId: message.deviceId,
-            deviceName: message.deviceName,
-            note: message.note!,
-            channel: message.channel,
-          },
-        } : null);
+      if (message.type === "noteon") {
+        setEditedSound((prev) =>
+          prev
+            ? {
+                ...prev,
+                midiMapping: {
+                  deviceId: message.deviceId,
+                  deviceName: message.deviceName,
+                  note: message.note!,
+                  channel: message.channel,
+                },
+              }
+            : null
+        );
         dispatch(stopMidiListening());
       }
     };
@@ -48,7 +66,13 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
     return () => {
       midiHandler.removeListener(handleMidiMessage);
     };
-  }, [midiHandler, editedSound, ui.isMidiListening, ui.listeningMode, dispatch]);
+  }, [
+    midiHandler,
+    editedSound,
+    ui.isMidiListening,
+    ui.listeningMode,
+    dispatch,
+  ]);
 
   if (!ui.isSettingsModalOpen || !editedSound) return null;
 
@@ -67,7 +91,9 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
   };
 
   const handleClearMapping = () => {
-    setEditedSound(prev => prev ? { ...prev, midiMapping: undefined } : null);
+    setEditedSound((prev) =>
+      prev ? { ...prev, midiMapping: undefined } : null
+    );
   };
 
   return (
@@ -75,7 +101,12 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
       <div className="bg-dark-600 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b-2 border-dark-500 flex items-center justify-between">
           <h3 className="text-xl font-semibold">Sound Settings</h3>
-          <button onClick={handleClose} className="text-2xl hover:text-red-500 transition-colors">&times;</button>
+          <button
+            onClick={handleClose}
+            className="text-2xl hover:text-red-500 transition-colors"
+          >
+            &times;
+          </button>
         </div>
 
         <div className="p-6 space-y-4">
@@ -84,7 +115,9 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
             <input
               type="text"
               value={editedSound.name}
-              onChange={(e) => setEditedSound({ ...editedSound, name: e.target.value })}
+              onChange={(e) =>
+                setEditedSound({ ...editedSound, name: e.target.value })
+              }
               className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -93,13 +126,19 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
             <label className="block text-sm font-medium mb-2">Play Mode</label>
             <select
               value={editedSound.settings.playMode}
-              onChange={(e) => setEditedSound({
-                ...editedSound,
-                settings: { ...editedSound.settings, playMode: e.target.value as 'trigger' | 'gate' | 'loop' },
-              })}
+              onChange={(e) =>
+                setEditedSound({
+                  ...editedSound,
+                  settings: {
+                    ...editedSound.settings,
+                    playMode: e.target.value as "trigger" | "gate" | "loop",
+                  },
+                })
+              }
               className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
             >
               <option value="trigger">Trigger (one-shot)</option>
+              <option value="trigger-stop">Trigger (fade out)</option>
               <option value="gate">Gate (hold to play)</option>
               <option value="loop">Loop (continuous)</option>
             </select>
@@ -114,41 +153,60 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
               min="0"
               max="100"
               value={Math.round(editedSound.settings.volume * 100)}
-              onChange={(e) => setEditedSound({
-                ...editedSound,
-                settings: { ...editedSound.settings, volume: parseInt(e.target.value) / 100 },
-              })}
+              onChange={(e) =>
+                setEditedSound({
+                  ...editedSound,
+                  settings: {
+                    ...editedSound.settings,
+                    volume: parseInt(e.target.value) / 100,
+                  },
+                })
+              }
               className="w-full h-2 bg-dark-500 rounded-lg appearance-none cursor-pointer"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Fade In (ms)</label>
+              <label className="block text-sm font-medium mb-2">
+                Fade In (ms)
+              </label>
               <input
                 type="number"
                 min="0"
                 max="5000"
                 value={editedSound.settings.fadeInMs}
-                onChange={(e) => setEditedSound({
-                  ...editedSound,
-                  settings: { ...editedSound.settings, fadeInMs: parseInt(e.target.value) || 0 },
-                })}
+                onChange={(e) =>
+                  setEditedSound({
+                    ...editedSound,
+                    settings: {
+                      ...editedSound.settings,
+                      fadeInMs: parseInt(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Fade Out (ms)</label>
+              <label className="block text-sm font-medium mb-2">
+                Fade Out (ms)
+              </label>
               <input
                 type="number"
                 min="0"
                 max="5000"
                 value={editedSound.settings.fadeOutMs}
-                onChange={(e) => setEditedSound({
-                  ...editedSound,
-                  settings: { ...editedSound.settings, fadeOutMs: parseInt(e.target.value) || 0 },
-                })}
+                onChange={(e) =>
+                  setEditedSound({
+                    ...editedSound,
+                    settings: {
+                      ...editedSound.settings,
+                      fadeOutMs: parseInt(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
               />
             </div>
@@ -156,31 +214,45 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Start Time (s)</label>
+              <label className="block text-sm font-medium mb-2">
+                Start Time (s)
+              </label>
               <input
                 type="number"
                 min="0"
                 step="0.1"
                 value={editedSound.settings.startTime || 0}
-                onChange={(e) => setEditedSound({
-                  ...editedSound,
-                  settings: { ...editedSound.settings, startTime: parseFloat(e.target.value) || 0 },
-                })}
+                onChange={(e) =>
+                  setEditedSound({
+                    ...editedSound,
+                    settings: {
+                      ...editedSound.settings,
+                      startTime: parseFloat(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">End Time (s)</label>
+              <label className="block text-sm font-medium mb-2">
+                End Time (s)
+              </label>
               <input
                 type="number"
                 min="0"
                 step="0.1"
                 value={editedSound.settings.endTime || 0}
-                onChange={(e) => setEditedSound({
-                  ...editedSound,
-                  settings: { ...editedSound.settings, endTime: parseFloat(e.target.value) || 0 },
-                })}
+                onChange={(e) =>
+                  setEditedSound({
+                    ...editedSound,
+                    settings: {
+                      ...editedSound.settings,
+                      endTime: parseFloat(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="w-full px-3 py-2 bg-dark-800 border border-dark-500 rounded focus:border-blue-500 focus:outline-none"
                 placeholder="0 = full duration"
               />
@@ -194,24 +266,37 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
               startTime={editedSound.settings.startTime || 0}
               endTime={editedSound.settings.endTime || 0}
               duration={0}
-              onStartTimeChange={(time) => setEditedSound({
-                ...editedSound,
-                settings: { ...editedSound.settings, startTime: time },
-              })}
-              onEndTimeChange={(time) => setEditedSound({
-                ...editedSound,
-                settings: { ...editedSound.settings, endTime: time },
-              })}
+              onStartTimeChange={(time) =>
+                setEditedSound({
+                  ...editedSound,
+                  settings: { ...editedSound.settings, startTime: time },
+                })
+              }
+              onEndTimeChange={(time) =>
+                setEditedSound({
+                  ...editedSound,
+                  settings: { ...editedSound.settings, endTime: time },
+                })
+              }
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">MIDI Mapping</label>
+            <label className="block text-sm font-medium mb-2">
+              MIDI Mapping
+            </label>
             {editedSound.midiMapping ? (
               <div className="p-3 bg-dark-800 rounded mb-2">
-                <div className="text-sm mb-1"><strong>Device:</strong> {editedSound.midiMapping.deviceName}</div>
-                <div className="text-sm mb-1"><strong>Channel:</strong> {editedSound.midiMapping.channel + 1}</div>
-                <div className="text-sm"><strong>Note:</strong> {editedSound.midiMapping.note}</div>
+                <div className="text-sm mb-1">
+                  <strong>Device:</strong> {editedSound.midiMapping.deviceName}
+                </div>
+                <div className="text-sm mb-1">
+                  <strong>Channel:</strong>{" "}
+                  {editedSound.midiMapping.channel + 1}
+                </div>
+                <div className="text-sm">
+                  <strong>Note:</strong> {editedSound.midiMapping.note}
+                </div>
               </div>
             ) : (
               <div className="p-3 bg-dark-800 rounded mb-2 text-sm text-dark-300 italic">
@@ -220,11 +305,13 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({ soundManager, m
             )}
             <div className="flex gap-2">
               <button
-                onClick={() => dispatch(startMidiListening('sound'))}
+                onClick={() => dispatch(startMidiListening("sound"))}
                 disabled={ui.isMidiListening}
                 className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-dark-600 disabled:cursor-not-allowed rounded transition-colors"
               >
-                {ui.isMidiListening && ui.listeningMode === 'sound' ? 'Listening...' : 'Assign MIDI Key'}
+                {ui.isMidiListening && ui.listeningMode === "sound"
+                  ? "Listening..."
+                  : "Assign MIDI Key"}
               </button>
               <button
                 onClick={handleClearMapping}

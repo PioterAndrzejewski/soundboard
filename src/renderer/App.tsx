@@ -132,10 +132,34 @@ const App: React.FC = () => {
           dispatch(setCurrentProjectPath(result.filePath));
           dispatch(setDirty(false));
 
-          // Reload sounds into audio engine
+          // Reload sounds into audio engine, regenerating synth sounds if needed
           if (soundManagerRef.current && audioEngineRef.current) {
             for (const sound of result.project.sounds) {
               try {
+                // Check if file exists
+                const exists = await window.electronAPI.fileExists(sound.filePath);
+
+                if (!exists && sound.filePath.includes('soundboard-synth')) {
+                  console.log(`🔄 Regenerating missing synth sound: ${sound.name}`);
+
+                  // Extract note name and instrument from file path
+                  // File format: /temp/soundboard-synth/synth_C1_piano.wav
+                  const fileName = sound.filePath.split('/').pop() || '';
+                  const match = fileName.match(/synth_(.+?)_(.+?)\.wav/);
+
+                  if (match) {
+                    const noteName = match[1].replace('s', '#');
+                    const instrument = match[2] as InstrumentType;
+
+                    console.log(`Regenerating ${noteName} with ${instrument}`);
+                    const newFilePath = await generateAndSaveSynthSound(noteName, instrument);
+
+                    // Update the sound with new file path
+                    sound.filePath = newFilePath;
+                    dispatch(updateSound({ id: sound.id, updates: { filePath: newFilePath } }));
+                  }
+                }
+
                 await audioEngineRef.current.loadSound(sound);
               } catch (error) {
                 console.error(`Failed to load sound ${sound.name}:`, error);
@@ -631,10 +655,34 @@ const App: React.FC = () => {
         dispatch(setCurrentProjectPath(result.filePath));
         dispatch(setDirty(false));
 
-        // Reload sounds into audio engine
+        // Reload sounds into audio engine, regenerating synth sounds if needed
         if (soundManagerRef.current && audioEngineRef.current) {
           for (const sound of result.project.sounds) {
             try {
+              // Check if file exists
+              const exists = await window.electronAPI.fileExists(sound.filePath);
+
+              if (!exists && sound.filePath.includes('soundboard-synth')) {
+                console.log(`🔄 Regenerating missing synth sound: ${sound.name}`);
+
+                // Extract note name and instrument from file path
+                // File format: /temp/soundboard-synth/synth_C1_piano.wav
+                const fileName = sound.filePath.split('/').pop() || '';
+                const match = fileName.match(/synth_(.+?)_(.+?)\.wav/);
+
+                if (match) {
+                  const noteName = match[1].replace('s', '#');
+                  const instrument = match[2] as InstrumentType;
+
+                  console.log(`Regenerating ${noteName} with ${instrument}`);
+                  const newFilePath = await generateAndSaveSynthSound(noteName, instrument);
+
+                  // Update the sound with new file path
+                  sound.filePath = newFilePath;
+                  dispatch(updateSound({ id: sound.id, updates: { filePath: newFilePath } }));
+                }
+              }
+
               await audioEngineRef.current.loadSound(sound);
             } catch (error) {
               console.error(`Failed to load sound ${sound.name}:`, error);
