@@ -282,13 +282,24 @@ export class AudioEngine {
       // Load the audio file via IPC to avoid file:// security restrictions
       const arrayBuffer = await window.electronAPI.readAudioFile(filePath);
 
-      // Convert ArrayBuffer to Blob
-      const blob = new Blob([arrayBuffer]);
+      // Detect MIME type from file extension
+      const ext = filePath.toLowerCase().split('.').pop();
+      let mimeType = 'audio/mpeg'; // default
+
+      if (ext === 'wav') mimeType = 'audio/wav';
+      else if (ext === 'ogg') mimeType = 'audio/ogg';
+      else if (ext === 'mp3') mimeType = 'audio/mpeg';
+      else if (ext === 'flac') mimeType = 'audio/flac';
+      else if (ext === 'm4a' || ext === 'aac') mimeType = 'audio/mp4';
+      else if (ext === 'webm') mimeType = 'audio/webm';
+
+      // Convert ArrayBuffer to Blob with proper MIME type
+      const blob = new Blob([arrayBuffer], { type: mimeType });
 
       // Create a blob URL
       const blobUrl = URL.createObjectURL(blob);
 
-      console.log(`✅ Created blob URL for: ${filePath}`);
+      console.log(`✅ Created blob URL for: ${filePath} (${mimeType})`);
       return blobUrl;
     } catch (error) {
       console.error(`❌ Failed to load audio file: ${filePath}`, error);
