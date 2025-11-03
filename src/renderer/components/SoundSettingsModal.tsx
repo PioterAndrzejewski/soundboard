@@ -131,7 +131,7 @@ const SoundSettingsModal: React.FC<SoundSettingsModalProps> = ({
                   ...editedSound,
                   settings: {
                     ...editedSound.settings,
-                    playMode: e.target.value as "trigger" | "gate" | "loop",
+                    playMode: e.target.value as "trigger" | "gate" | "loop" | "trigger-stop",
                   },
                 })
               }

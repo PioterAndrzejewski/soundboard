@@ -70,6 +70,40 @@ function createMenu() {
           }
         }
       ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Zoom In',
+          accelerator: 'CmdOrCtrl+Plus',
+          click: () => {
+            if (mainWindow) {
+              const currentZoom = mainWindow.webContents.getZoomFactor();
+              mainWindow.webContents.setZoomFactor(currentZoom + 0.1);
+            }
+          }
+        },
+        {
+          label: 'Zoom Out',
+          accelerator: 'CmdOrCtrl+-',
+          click: () => {
+            if (mainWindow) {
+              const currentZoom = mainWindow.webContents.getZoomFactor();
+              mainWindow.webContents.setZoomFactor(Math.max(0.5, currentZoom - 0.1));
+            }
+          }
+        },
+        {
+          label: 'Reset Zoom',
+          accelerator: 'CmdOrCtrl+0',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.setZoomFactor(1.0);
+            }
+          }
+        }
+      ]
     }
   ];
 
