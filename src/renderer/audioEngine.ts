@@ -308,6 +308,9 @@ export class AudioEngine {
   }
 
   public async playSound(sound: Sound, velocity: number = 127): Promise<string> {
+    console.log(`🎬 playSound called for: ${sound.name}, mode: ${sound.settings.playMode}, velocity: ${velocity}`);
+    console.log(`📁 File path: ${sound.filePath}`);
+
     // For trigger mode (restart): if sound is already playing, stop it immediately and restart from beginning
     if (sound.settings.playMode === 'trigger') {
       const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
@@ -355,10 +358,16 @@ export class AudioEngine {
     console.log(`🎵 Playing sound: ${sound.name} (mode: ${sound.settings.playMode})`);
 
     // Create audio element
+    console.log(`📦 Creating Audio element...`);
     const audio = new Audio();
+
+    console.log(`🔄 Loading file URL...`);
     const blobUrl = await this.getFileUrl(sound.filePath);
+    console.log(`✅ Blob URL created: ${blobUrl}`);
+
     audio.src = blobUrl;
     audio.loop = sound.settings.playMode === 'loop';
+    console.log(`🔊 Audio src set, loop: ${audio.loop}`);
 
     // Set output device if specified
     if (this.outputDeviceId && 'setSinkId' in audio) {
@@ -395,10 +404,12 @@ export class AudioEngine {
     let source: MediaElementAudioSourceNode | undefined;
     if (this.audioContext) {
       try {
+        console.log(`🎚️ Connecting to Web Audio API effects chain...`);
         source = this.audioContext.createMediaElementSource(audio);
         this.connectEffectsChain(source);
+        console.log(`✅ Connected to effects chain`);
       } catch (error) {
-        console.warn('Failed to connect audio to effects chain:', error);
+        console.warn('❌ Failed to connect audio to effects chain:', error);
       }
     }
 
@@ -414,17 +425,28 @@ export class AudioEngine {
     };
 
     this.playingSounds.set(playingId, playingSound);
+    console.log(`📝 Added to playingSounds map. Total playing: ${this.playingSounds.size}`);
 
     // Handle sound end (but not for loop mode since it loops automatically)
     audio.onended = () => {
+      console.log(`🏁 Audio ended: ${sound.name}`);
       if (sound.settings.playMode !== 'loop') {
         this.cleanupSound(playingId);
       }
     };
 
     audio.onerror = (error) => {
-      console.error('Audio playback error:', error);
+      console.error('❌ Audio playback error:', error);
+      console.error('Error details:', audio.error);
       this.cleanupSound(playingId);
+    };
+
+    audio.onloadedmetadata = () => {
+      console.log(`📊 Metadata loaded: duration=${audio.duration}s`);
+    };
+
+    audio.oncanplay = () => {
+      console.log(`✅ Audio can play (buffered enough data)`);
     };
 
     // Set start time if specified
@@ -453,10 +475,12 @@ export class AudioEngine {
 
     // Start playback
     try {
+      console.log(`▶️ Calling audio.play()...`);
       await audio.play();
-      console.log(`✅ Sound playing: ${sound.name}`);
+      console.log(`✅ audio.play() succeeded! Sound playing: ${sound.name}`);
+      console.log(`Current state: paused=${audio.paused}, currentTime=${audio.currentTime}, readyState=${audio.readyState}`);
     } catch (error) {
-      console.error('Failed to play sound:', error);
+      console.error('❌ Failed to play sound:', error);
       this.cleanupSound(playingId);
       throw error;
     }

@@ -206,9 +206,14 @@ export class SoundManager {
   }
 
   public async playSound(soundId: string): Promise<void> {
+    console.log(`🎮 SoundManager.playSound called for soundId: ${soundId}`);
     const sound = this.sounds.get(soundId);
     if (sound) {
+      console.log(`✅ Sound found in manager: ${sound.name}`);
       await this.audioEngine.playSound(sound);
+    } else {
+      console.error(`❌ Sound not found in manager: ${soundId}`);
+      console.log(`Available sounds:`, Array.from(this.sounds.keys()));
     }
   }
 
