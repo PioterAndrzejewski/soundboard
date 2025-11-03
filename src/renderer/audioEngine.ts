@@ -286,20 +286,23 @@ export class AudioEngine {
   }
 
   public async playSound(sound: Sound, velocity: number = 127): Promise<string> {
-    // For trigger mode, if sound is already playing, fade it out and DON'T play again
+    // For trigger mode (restart): if sound is already playing, stop it immediately and restart from beginning
     if (sound.settings.playMode === 'trigger') {
       const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
         ps => ps.soundId === sound.id
       );
       if (alreadyPlaying.length > 0) {
-        console.log(`🔄 Trigger mode: fading out already playing sound: ${sound.name}`);
-        alreadyPlaying.forEach(ps => this.stopSound(ps.id));
-        // Return early - don't play again
-        return alreadyPlaying[0].id;
+        console.log(`🔄 Trigger mode: restarting sound from beginning: ${sound.name}`);
+        // Stop all instances immediately (no fade out for restart)
+        alreadyPlaying.forEach(ps => {
+          ps.audio.pause();
+          this.cleanupSound(ps.id);
+        });
+        // Continue to play the sound again from the beginning
       }
     }
 
-    // For loop mode, behave like trigger mode: if already playing, stop it and DON'T play again
+    // For loop mode: if already playing, stop it (toggle off behavior)
     if (sound.settings.playMode === 'loop') {
       const alreadyPlaying = Array.from(this.playingSounds.values()).filter(
         ps => ps.soundId === sound.id
@@ -307,7 +310,7 @@ export class AudioEngine {
       if (alreadyPlaying.length > 0) {
         console.log(`🔄 Loop mode: stopping looping sound: ${sound.name}`);
         alreadyPlaying.forEach(ps => this.stopSound(ps.id));
-        // Return early - don't play again (trigger behavior)
+        // Return early - don't play again (toggle off)
         return alreadyPlaying[0].id;
       }
     }
