@@ -24,7 +24,7 @@ import { setTabs } from "./store/tabsSlice";
 import { AudioEngine } from "./audioEngine";
 import { MidiHandler } from "./midiHandler";
 import { SoundManager } from "./soundManager";
-import { generateAndSaveSynthSound } from "./synthGenerator";
+import { generateAndSaveSynthSound, InstrumentType } from "./synthGenerator";
 import Header from "./components/Header";
 import TabBar from "./components/TabBar";
 import SoundsGrid from "./components/SoundsGrid";
@@ -702,6 +702,67 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRegenerateWithInstrument = async (instrument: InstrumentType) => {
+    if (!activeTabId) return;
+
+    // Remove all sounds from this tab
+    const tabSounds = sounds.filter(s => s.tabId === activeTabId);
+    for (const sound of tabSounds) {
+      if (soundManagerRef.current) {
+        soundManagerRef.current.removeSound(sound.id);
+        dispatch(removeSound(sound.id));
+      }
+    }
+
+    // Regenerate with new instrument
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const pianoKeys: string[] = [];
+
+    for (let octave = 1; octave <= 3; octave++) {
+      for (let noteIdx = 0; noteIdx < notes.length; noteIdx++) {
+        const note = notes[noteIdx];
+        const noteName = `${note}${octave}`;
+        pianoKeys.push(noteName);
+        if (noteName === 'C3') break;
+      }
+      if (pianoKeys.length >= 25) break;
+    }
+
+    try {
+      for (let i = 0; i < pianoKeys.length; i++) {
+        const noteName = pianoKeys[i];
+        console.log(`Generating ${instrument} sound for ${noteName} (${i + 1}/25)...`);
+
+        const filePath = await generateAndSaveSynthSound(noteName, instrument);
+
+        if (soundManagerRef.current && audioEngineRef.current) {
+          const sound = await soundManagerRef.current.addSound(filePath, noteName);
+          await audioEngineRef.current.loadSound(sound);
+
+          const soundWithGateMode = {
+            ...sound,
+            settings: {
+              ...sound.settings,
+              playMode: 'gate' as const,
+            },
+            tabId: activeTabId,
+            slotPosition: { row: i, col: 0 },
+          };
+
+          dispatch(addSound(soundWithGateMode));
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      console.log(`✅ Generated all ${instrument} sounds`);
+      dispatch(setDirty(true));
+    } catch (error) {
+      console.error('Failed to regenerate sounds:', error);
+      alert(`Failed to regenerate sounds: ${error}`);
+    }
+  };
+
   // Auto-generate synth sounds for APC KEY25 tabs
   useEffect(() => {
     const generateSoundsForPianoTab = async () => {
@@ -833,6 +894,7 @@ const App: React.FC = () => {
                       dispatch(setSelectedSound(soundId));
                       dispatch(startMidiListening('sound'));
                     }}
+                    onRegenerateWithInstrument={handleRegenerateWithInstrument}
                   />
                 );
               } else if (currentLayout === 'apc-key') {

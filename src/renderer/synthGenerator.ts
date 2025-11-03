@@ -34,11 +34,14 @@ export function noteNameToMidiNote(noteName: string): number {
   return (octave + 1) * 12 + noteOffset;
 }
 
-// Generate a synthetic audio buffer for a specific note with piano-like character
+// Instrument types available for synthesis
+export type InstrumentType = 'piano' | 'house' | 'flute' | 'trumpet';
+
+// Generate a synthetic audio buffer for a specific note with specified instrument
 export async function generateSynthSound(
   noteName: string,
   duration: number = 3.0,
-  waveType: 'piano' = 'piano'
+  instrument: InstrumentType = 'piano'
 ): Promise<AudioBuffer> {
   const audioContext = new AudioContext();
   const sampleRate = audioContext.sampleRate;
@@ -52,40 +55,89 @@ export async function generateSynthSound(
   const leftChannel = buffer.getChannelData(0);
   const rightChannel = buffer.getChannelData(1);
 
-  // Generate piano-like waveform with rich harmonics
+  // Generate waveform based on instrument type
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
     const phase = 2 * Math.PI * frequency * t;
 
     let sample = 0;
+    let attackTime = 0.005;
+    let decayTime = 0.15;
+    let sustainLevel = 0.4;
+    let releaseTime = 0.8;
 
-    // Piano-like tone with carefully balanced harmonics
-    // Fundamental and harmonics with decreasing amplitude
-    sample = Math.sin(phase) * 0.4;                    // Fundamental
-    sample += Math.sin(phase * 2) * 0.3;               // 2nd harmonic (octave)
-    sample += Math.sin(phase * 3) * 0.15;              // 3rd harmonic (fifth)
-    sample += Math.sin(phase * 4) * 0.1;               // 4th harmonic
-    sample += Math.sin(phase * 5) * 0.06;              // 5th harmonic
-    sample += Math.sin(phase * 6) * 0.04;              // 6th harmonic
-    sample += Math.sin(phase * 7) * 0.025;             // 7th harmonic
-    sample += Math.sin(phase * 8) * 0.015;             // 8th harmonic
+    switch (instrument) {
+      case 'piano':
+        // Piano-like tone with rich harmonics
+        sample = Math.sin(phase) * 0.35;                    // Fundamental
+        sample += Math.sin(phase * 2) * 0.25;               // 2nd harmonic (octave)
+        sample += Math.sin(phase * 3) * 0.12;               // 3rd harmonic (fifth)
+        sample += Math.sin(phase * 4) * 0.08;               // 4th harmonic
+        sample += Math.sin(phase * 5) * 0.05;               // 5th harmonic
+        sample += Math.sin(phase * 6) * 0.03;               // 6th harmonic
+        sample += Math.sin(phase * 7) * 0.02;               // 7th harmonic
+        sample += Math.sin(phase * 8) * 0.01;               // 8th harmonic
+        // Slight inharmonicity
+        sample += Math.sin(phase * 2.01) * 0.04;
+        sample += Math.sin(phase * 3.02) * 0.02;
+        attackTime = 0.005;
+        decayTime = 0.15;
+        sustainLevel = 0.35;
+        releaseTime = 0.8;
+        break;
 
-    // Add slight inharmonicity for more realistic piano sound
-    const inharmonic1 = Math.sin(phase * 2.01) * 0.05;
-    const inharmonic2 = Math.sin(phase * 3.02) * 0.03;
-    sample += inharmonic1 + inharmonic2;
+      case 'house':
+        // House techno beat - punchy bass with sub
+        sample = Math.sin(phase) * 0.4;                     // Fundamental
+        sample += Math.sin(phase * 2) * 0.15;               // 2nd harmonic
+        sample += Math.sin(phase * 0.5) * 0.25;             // Sub-bass
+        sample += Math.sin(phase * 3) * 0.08;               // 3rd harmonic
+        // Add slight noise for punch
+        sample += (Math.random() * 2 - 1) * 0.02 * Math.exp(-t * 10);
+        attackTime = 0.002;
+        decayTime = 0.1;
+        sustainLevel = 0.6;
+        releaseTime = 0.3;
+        break;
 
-    // Piano-style ADSR envelope
-    const attackTime = 0.005;      // Very fast attack (5ms)
-    const decayTime = 0.15;        // Quick decay
-    const sustainLevel = 0.4;      // Lower sustain
-    const releaseTime = 0.8;       // Long release for piano resonance
+      case 'flute':
+        // Flute - pure tone with odd harmonics
+        sample = Math.sin(phase) * 0.5;                     // Fundamental
+        sample += Math.sin(phase * 3) * 0.15;               // 3rd harmonic
+        sample += Math.sin(phase * 5) * 0.08;               // 5th harmonic
+        sample += Math.sin(phase * 7) * 0.04;               // 7th harmonic
+        // Add breath noise at start
+        sample += (Math.random() * 2 - 1) * 0.03 * Math.exp(-t * 20);
+        attackTime = 0.08;  // Slower attack for breath
+        decayTime = 0.05;
+        sustainLevel = 0.8;
+        releaseTime = 0.15;
+        break;
 
+      case 'trumpet':
+        // Trumpet - bright with strong harmonics
+        sample = Math.sin(phase) * 0.35;                    // Fundamental
+        sample += Math.sin(phase * 2) * 0.25;               // 2nd harmonic
+        sample += Math.sin(phase * 3) * 0.2;                // 3rd harmonic
+        sample += Math.sin(phase * 4) * 0.15;               // 4th harmonic
+        sample += Math.sin(phase * 5) * 0.12;               // 5th harmonic
+        sample += Math.sin(phase * 6) * 0.08;               // 6th harmonic
+        sample += Math.sin(phase * 7) * 0.05;               // 7th harmonic
+        // Add slight brass buzz
+        sample += Math.sin(phase * 1.5) * 0.05;
+        attackTime = 0.02;  // Quick but not instant
+        decayTime = 0.08;
+        sustainLevel = 0.7;
+        releaseTime = 0.2;
+        break;
+    }
+
+    // Apply ADSR envelope
     let envelope = 1.0;
     if (t < attackTime) {
-      // Fast attack with slight curve
+      // Attack with curve
       const attackProgress = t / attackTime;
-      envelope = attackProgress * attackProgress; // Quadratic curve
+      envelope = attackProgress * attackProgress;
     } else if (t < attackTime + decayTime) {
       // Decay to sustain
       const decayProgress = (t - attackTime) / decayTime;
@@ -98,17 +150,19 @@ export async function generateSynthSound(
       // Release
       const releaseProgress = (t - (duration - releaseTime)) / releaseTime;
       const releaseEnvelope = sustainLevel * Math.exp(-(duration - releaseTime - attackTime - decayTime) * 0.3);
-      envelope = releaseEnvelope * (1.0 - releaseProgress * releaseProgress); // Quadratic release
+      envelope = releaseEnvelope * (1.0 - releaseProgress * releaseProgress);
     }
 
-    // Apply velocity-sensitive brightness (more harmonics at start)
-    const brightnessEnvelope = Math.exp(-t * 2.0);
-    sample = sample * (1.0 - brightnessEnvelope * 0.3);
+    // Apply brightness envelope for more natural sound
+    if (instrument !== 'house') {
+      const brightnessEnvelope = Math.exp(-t * 2.0);
+      sample = sample * (1.0 - brightnessEnvelope * 0.2);
+    }
 
     sample *= envelope;
 
-    // Normalize
-    sample = Math.max(-1, Math.min(1, sample * 0.7)); // Reduce overall volume slightly
+    // Soft clipping to prevent harsh distortion
+    sample = Math.tanh(sample * 0.9) * 0.5;  // Reduced gain to prevent distortion
 
     leftChannel[i] = sample;
     rightChannel[i] = sample;
@@ -170,9 +224,12 @@ export function audioBufferToWav(buffer: AudioBuffer): Blob {
 }
 
 // Generate and save synth sound for a piano key
-export async function generateAndSaveSynthSound(noteName: string): Promise<string> {
-  // Generate piano sound (all notes use piano wave type)
-  const buffer = await generateSynthSound(noteName, 3.0, 'piano');
+export async function generateAndSaveSynthSound(
+  noteName: string,
+  instrument: InstrumentType = 'piano'
+): Promise<string> {
+  // Generate sound with specified instrument
+  const buffer = await generateSynthSound(noteName, 3.0, instrument);
   const wavBlob = audioBufferToWav(buffer);
 
   // Create a temporary file path in the system temp directory
@@ -180,7 +237,8 @@ export async function generateAndSaveSynthSound(noteName: string): Promise<strin
   const uint8Array = new Uint8Array(arrayBuffer);
 
   // Save via electron IPC
-  const filePath = await window.electronAPI.saveSynthSound(noteName, uint8Array);
+  const fileName = `${noteName}_${instrument}`;
+  const filePath = await window.electronAPI.saveSynthSound(fileName, uint8Array);
 
   return filePath;
 }

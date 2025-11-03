@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sound } from '../../shared/types';
+import { InstrumentType } from '../synthGenerator';
 
 interface APCKey25LayoutProps {
   tabId: string;
@@ -9,6 +10,7 @@ interface APCKey25LayoutProps {
   onRemoveSound: (soundId: string) => void;
   onEditSound?: (soundId: string) => void;
   onStartMidiMapping?: (soundId: string) => void;
+  onRegenerateWithInstrument?: (instrument: InstrumentType) => void;
 }
 
 const APCKey25Layout: React.FC<APCKey25LayoutProps> = ({
@@ -19,8 +21,44 @@ const APCKey25Layout: React.FC<APCKey25LayoutProps> = ({
   onRemoveSound,
   onEditSound,
   onStartMidiMapping,
+  onRegenerateWithInstrument,
 }) => {
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>('piano');
+
+  // Check for MIDI mapping on first key (C1) and offer auto-population
+  useEffect(() => {
+    const firstKeySound = sounds.find(s => s.slotPosition?.row === 0 && s.tabId === tabId);
+
+    if (firstKeySound?.midiMapping && firstKeySound.midiMapping.note === 48) {
+      // Check if other keys are not yet populated
+      const populatedKeys = sounds.filter(s => s.tabId === tabId && s.midiMapping).length;
+
+      if (populatedKeys === 1) {
+        const shouldPopulate = window.confirm(
+          'First key (C1) is mapped to MIDI note 48. Would you like to auto-populate the remaining 24 keys with MIDI notes 49-72?'
+        );
+
+        if (shouldPopulate && onStartMidiMapping) {
+          // Trigger auto-population for remaining keys
+          // This will be handled by the parent component
+          (window as any).__autoPopulatePianoKeys = true;
+        }
+      }
+    }
+  }, [sounds, tabId]);
+
+  const handleInstrumentChange = (instrument: InstrumentType) => {
+    setSelectedInstrument(instrument);
+    if (onRegenerateWithInstrument) {
+      const shouldRegenerate = window.confirm(
+        `Change instrument to ${instrument.toUpperCase()}? This will regenerate all sounds in this tab.`
+      );
+      if (shouldRegenerate) {
+        onRegenerateWithInstrument(instrument);
+      }
+    }
+  };
 
   // Piano keys pattern: C, C#, D, D#, E, F, F#, G, G#, A, A#, B
   // White keys: C, D, E, F, G, A, B (7 per octave, plus C at the start = 7*3 + 1 = 22 white keys for 3 octaves C1-C3)
@@ -252,7 +290,27 @@ const APCKey25Layout: React.FC<APCKey25LayoutProps> = ({
   const blackKeys = pianoKeys.filter(k => k.isBlack);
 
   return (
-    <div className="p-4 h-full flex items-center justify-center overflow-auto">
+    <div className="p-4 h-full flex flex-col items-center justify-center overflow-auto">
+      {/* Instrument Selector */}
+      <div className="mb-4 flex items-center gap-3 bg-dark-700 p-3 rounded-lg border border-dark-500">
+        <label className="text-sm font-medium text-dark-200">Instrument:</label>
+        <div className="flex gap-2">
+          {(['piano', 'house', 'flute', 'trumpet'] as InstrumentType[]).map((instrument) => (
+            <button
+              key={instrument}
+              onClick={() => handleInstrumentChange(instrument)}
+              className={`px-4 py-2 rounded text-sm font-medium transition-all ${
+                selectedInstrument === instrument
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-dark-600 text-dark-200 hover:bg-dark-500'
+              }`}
+            >
+              {instrument.charAt(0).toUpperCase() + instrument.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="relative" style={{ width: '1200px' }}>
         {/* White keys row */}
         <div className="flex gap-0.5">
