@@ -82,9 +82,19 @@ const tabsSlice = createSlice({
     },
     reorderTabs: (state, action: PayloadAction<Tab[]>) => {
       state.tabs = action.payload;
+      // Update order property based on array position
+      state.tabs.forEach((tab, index) => {
+        tab.order = index;
+      });
     },
     setTabs: (state, action: PayloadAction<Tab[]>) => {
       state.tabs = action.payload;
+    },
+    setTabMidiMapping: (state, action: PayloadAction<{ tabId: string; mapping: { deviceId: string; deviceName: string; note: number; channel: number } | undefined }>) => {
+      const tab = state.tabs.find(t => t.id === action.payload.tabId);
+      if (tab) {
+        tab.midiMapping = action.payload.mapping;
+      }
     },
   },
 });
@@ -97,6 +107,7 @@ export const {
   setActiveTab,
   reorderTabs,
   setTabs,
+  setTabMidiMapping,
 } = tabsSlice.actions;
 
 export default tabsSlice.reducer;

@@ -10,6 +10,7 @@ interface ExtendedUIState extends UIState {
   isActiveSoundsPanelOpen: boolean;
   lastTriggeredSoundId: string | null;
   lastTriggeredSoundTimestamp: number;
+  tabListeningTarget: string | null; // Tab ID when listening for tab MIDI mapping
 }
 
 const initialState: ExtendedUIState = {
@@ -25,6 +26,7 @@ const initialState: ExtendedUIState = {
   isActiveSoundsPanelOpen: true,
   lastTriggeredSoundId: null,
   lastTriggeredSoundTimestamp: 0,
+  tabListeningTarget: null,
 };
 
 const uiSlice = createSlice({
@@ -41,13 +43,20 @@ const uiSlice = createSlice({
       state.isSettingsModalOpen = false;
       state.selectedSoundId = null;
     },
-    startMidiListening: (state, action: PayloadAction<'sound' | 'volume' | 'stopall'>) => {
+    startMidiListening: (state, action: PayloadAction<'sound' | 'volume' | 'stopall' | { mode: 'tab'; target: string }>) => {
       state.isMidiListening = true;
-      state.listeningMode = action.payload;
+      if (typeof action.payload === 'object' && action.payload.mode === 'tab') {
+        state.listeningMode = 'sound'; // Use 'sound' mode for note-based listening
+        state.tabListeningTarget = action.payload.target;
+      } else {
+        state.listeningMode = action.payload as 'sound' | 'volume' | 'stopall';
+        state.tabListeningTarget = null;
+      }
     },
     stopMidiListening: (state) => {
       state.isMidiListening = false;
       state.listeningMode = 'none';
+      state.tabListeningTarget = null;
     },
     setCurrentProjectPath: (state, action: PayloadAction<string | null>) => {
       state.currentProjectPath = action.payload;

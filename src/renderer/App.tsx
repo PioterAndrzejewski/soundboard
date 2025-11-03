@@ -20,7 +20,7 @@ import {
   openSettingsModal,
   startMidiListening,
 } from "./store/uiSlice";
-import { setTabs } from "./store/tabsSlice";
+import { setTabs, setTabMidiMapping, setActiveTab } from "./store/tabsSlice";
 import { AudioEngine } from "./audioEngine";
 import { MidiHandler } from "./midiHandler";
 import { SoundManager } from "./soundManager";
@@ -359,7 +359,8 @@ const App: React.FC = () => {
       !midiHandlerRef.current ||
       !ui.isMidiListening ||
       ui.listeningMode !== "sound" ||
-      ui.isSettingsModalOpen
+      ui.isSettingsModalOpen ||
+      ui.tabListeningTarget // Exclude if listening for tab
     )
       return;
     if (!ui.selectedSoundId) return;
@@ -413,9 +414,79 @@ const App: React.FC = () => {
     ui.listeningMode,
     ui.selectedSoundId,
     ui.isSettingsModalOpen,
+    ui.tabListeningTarget,
     sounds,
     dispatch,
   ]);
+
+  // Handle MIDI assignment for tabs
+  useEffect(() => {
+    if (
+      !midiHandlerRef.current ||
+      !ui.isMidiListening ||
+      !ui.tabListeningTarget
+    )
+      return;
+
+    const handleMidiMessage = (message: any) => {
+      if (message.type === "noteon") {
+        // Assign MIDI mapping to tab
+        dispatch(
+          setTabMidiMapping({
+            tabId: ui.tabListeningTarget!,
+            mapping: {
+              deviceId: message.deviceId,
+              deviceName: message.deviceName,
+              note: message.note,
+              channel: message.channel,
+            },
+          })
+        );
+
+        // Stop listening and mark as dirty
+        dispatch(stopMidiListening());
+        dispatch(setDirty(true));
+      }
+    };
+
+    midiHandlerRef.current.addListener(handleMidiMessage);
+    return () => {
+      midiHandlerRef.current?.removeListener(handleMidiMessage);
+    };
+  }, [
+    midiHandlerRef.current,
+    ui.isMidiListening,
+    ui.tabListeningTarget,
+    dispatch,
+  ]);
+
+  // Handle MIDI tab switching (when tabs have MIDI mappings)
+  useEffect(() => {
+    if (!midiHandlerRef.current) return;
+
+    const handleMidiMessage = (message: any) => {
+      if (message.type === "noteon") {
+        // Check if any tab has this MIDI mapping
+        const matchingTab = tabs.find(
+          (tab) =>
+            tab.midiMapping &&
+            tab.midiMapping.deviceId === message.deviceId &&
+            tab.midiMapping.note === message.note &&
+            tab.midiMapping.channel === message.channel
+        );
+
+        if (matchingTab) {
+          console.log(`🎹 MIDI tab switch: ${matchingTab.name}`);
+          dispatch(setActiveTab(matchingTab.id));
+        }
+      }
+    };
+
+    midiHandlerRef.current.addListener(handleMidiMessage);
+    return () => {
+      midiHandlerRef.current?.removeListener(handleMidiMessage);
+    };
+  }, [midiHandlerRef.current, tabs, dispatch]);
 
   // Handle project operations
   const handleNewProject = async () => {

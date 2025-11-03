@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { addTab, removeTab, renameTab, setTabColor, setActiveTab } from '../store/tabsSlice';
+import { addTab, removeTab, renameTab, setTabColor, setActiveTab, reorderTabs, setTabMidiMapping } from '../store/tabsSlice';
 import { reassignSoundsTab } from '../store/soundsSlice';
+import { startMidiListening } from '../store/uiSlice';
 
 const TabBar: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -10,6 +11,8 @@ const TabBar: React.FC = () => {
   const [editingName, setEditingName] = useState('');
   const [settingsModalTabId, setSettingsModalTabId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
+  const [dragOverTabId, setDragOverTabId] = useState<string | null>(null);
 
   const predefinedColors = [
     '#3b82f6', // blue
@@ -60,6 +63,52 @@ const TabBar: React.FC = () => {
     }
   };
 
+  const handleDragStart = (e: React.DragEvent, tabId: string) => {
+    setDraggedTabId(tabId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, tabId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverTabId(tabId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTabId(null);
+    setDragOverTabId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetTabId: string) => {
+    e.preventDefault();
+    if (!draggedTabId || draggedTabId === targetTabId) {
+      setDraggedTabId(null);
+      setDragOverTabId(null);
+      return;
+    }
+
+    const draggedIndex = tabs.findIndex(t => t.id === draggedTabId);
+    const targetIndex = tabs.findIndex(t => t.id === targetTabId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newTabs = [...tabs];
+    const [draggedTab] = newTabs.splice(draggedIndex, 1);
+    newTabs.splice(targetIndex, 0, draggedTab);
+
+    dispatch(reorderTabs(newTabs));
+    setDraggedTabId(null);
+    setDragOverTabId(null);
+  };
+
+  const handleAssignMidiToTab = (tabId: string) => {
+    dispatch(startMidiListening({ mode: 'tab', target: tabId }));
+  };
+
+  const handleRemoveMidiFromTab = (tabId: string) => {
+    dispatch(setTabMidiMapping({ tabId, mapping: undefined }));
+  };
+
   const settingsTab = settingsModalTabId ? tabs.find(t => t.id === settingsModalTabId) : null;
 
   return (
@@ -69,6 +118,11 @@ const TabBar: React.FC = () => {
           <div
             key={tab.id}
             className="relative group"
+            draggable
+            onDragStart={(e) => handleDragStart(e, tab.id)}
+            onDragOver={(e) => handleDragOver(e, tab.id)}
+            onDragEnd={handleDragEnd}
+            onDrop={(e) => handleDrop(e, tab.id)}
           >
             <div
               onClick={() => handleTabClick(tab.id)}
@@ -77,16 +131,31 @@ const TabBar: React.FC = () => {
                 setSettingsModalTabId(tab.id);
                 setEditingName(tab.name);
               }}
-              className={`px-3 py-1.5 cursor-pointer transition-all flex items-center gap-2 border-b-2 ${
+              className={`px-3 py-1.5 cursor-move transition-all flex items-center gap-2 border-b-2 ${
                 activeTabId === tab.id
                   ? 'border-opacity-100'
                   : 'border-transparent opacity-60 hover:opacity-100'
+              } ${
+                dragOverTabId === tab.id && draggedTabId !== tab.id
+                  ? 'bg-dark-700'
+                  : ''
+              } ${
+                draggedTabId === tab.id
+                  ? 'opacity-50'
+                  : ''
               }`}
               style={{
                 borderBottomColor: activeTabId === tab.id ? tab.color : 'transparent',
               }}
             >
               <span className="text-xs font-medium text-dark-100">{tab.name}</span>
+
+              {/* MIDI indicator */}
+              {tab.midiMapping && (
+                <span className="text-[8px] text-green-400" title={`MIDI: Note ${tab.midiMapping.note}`}>
+                  🎹
+                </span>
+              )}
 
               {tabs.length > 1 && activeTabId === tab.id && (
                 <button
@@ -316,7 +385,7 @@ const TabBar: React.FC = () => {
             </div>
 
             {/* Color Selection */}
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-sm text-dark-200 mb-2">Tab Color</label>
               <div className="grid grid-cols-8 gap-2">
                 {predefinedColors.map((color) => (
@@ -333,6 +402,35 @@ const TabBar: React.FC = () => {
                   />
                 ))}
               </div>
+            </div>
+
+            {/* MIDI Mapping */}
+            <div className="mb-6">
+              <label className="block text-sm text-dark-200 mb-2">MIDI Mapping</label>
+              {settingsTab.midiMapping ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2 bg-dark-600 border border-dark-500 rounded text-sm text-dark-100">
+                    🎹 Note {settingsTab.midiMapping.note} (Ch {settingsTab.midiMapping.channel + 1})
+                  </div>
+                  <button
+                    onClick={() => handleRemoveMidiFromTab(settingsTab.id)}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
+                    title="Remove MIDI mapping"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleAssignMidiToTab(settingsTab.id)}
+                  className="w-full px-3 py-2 bg-dark-600 hover:bg-dark-500 border border-dark-500 rounded text-sm transition-colors"
+                >
+                  🎹 Assign MIDI Note
+                </button>
+              )}
+              <p className="text-xs text-dark-400 mt-1">
+                Press a MIDI note to switch to this tab
+              </p>
             </div>
 
             {/* Action Buttons */}
