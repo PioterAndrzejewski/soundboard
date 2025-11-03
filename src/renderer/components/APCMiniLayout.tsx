@@ -7,6 +7,8 @@ interface APCMiniLayoutProps {
   onAssignSound: (row: number, col: number, section: 'grid' | 'bottom' | 'side') => void;
   onPlaySound: (soundId: string) => void;
   onRemoveSound: (soundId: string) => void;
+  onEditSound?: (soundId: string) => void;
+  onStartMidiMapping?: (soundId: string) => void;
 }
 
 const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
@@ -15,11 +17,13 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
   onAssignSound,
   onPlaySound,
   onRemoveSound,
+  onEditSound,
+  onStartMidiMapping,
 }) => {
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
 
   // Find sound at specific position
-  const getSoundAtPosition = (row: number, col: number, section: 'grid' | 'bottom' | 'side'): Sound | undefined => {
+  const getSoundAtPosition = (row: number, col: number): Sound | undefined => {
     return sounds.find(s =>
       s.slotPosition?.row === row &&
       s.slotPosition?.col === col &&
@@ -27,28 +31,79 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
     );
   };
 
-  const renderSlot = (
-    row: number,
-    col: number,
-    section: 'grid' | 'bottom' | 'side',
-    isRounded: boolean = false,
-    isSquare: boolean = false
-  ) => {
-    const slotKey = `${section}-${row}-${col}`;
-    const sound = getSoundAtPosition(row, col, section);
+  const renderGridButton = (row: number, col: number) => {
+    const slotKey = `grid-${row}-${col}`;
+    const sound = getSoundAtPosition(row, col);
     const isHovered = hoveredSlot === slotKey;
-
-    const baseClasses = `
-      relative border-2 transition-all cursor-pointer
-      ${isRounded ? 'rounded-full' : isSquare ? '' : 'rounded'}
-      ${sound ? 'border-blue-500 bg-blue-900 hover:bg-blue-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
-      ${isHovered ? 'ring-2 ring-blue-400' : ''}
-    `;
 
     return (
       <div
         key={slotKey}
-        className={baseClasses}
+        className={`
+          relative w-full aspect-[2/1] border-2 rounded transition-all cursor-pointer flex flex-col p-2
+          ${sound ? 'border-blue-500 bg-blue-900 hover:bg-blue-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
+          ${isHovered ? 'ring-2 ring-blue-400' : ''}
+        `}
+        onMouseEnter={() => setHoveredSlot(slotKey)}
+        onMouseLeave={() => setHoveredSlot(null)}
+        onClick={() => {
+          if (sound) {
+            onPlaySound(sound.id);
+          } else {
+            onAssignSound(row, col, 'grid');
+          }
+        }}
+        title={sound ? `${sound.name} (Click to play)` : 'Click to assign sound'}
+      >
+        {sound ? (
+          <>
+            <div className="text-xs font-medium truncate">{sound.name}</div>
+            <div className="flex gap-1 mt-auto">
+              {sound.midiMapping && (
+                <span className="text-[10px] bg-green-600 px-1 rounded">🎹</span>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditSound?.(sound.id);
+                }}
+                className="text-[10px] bg-dark-600 hover:bg-dark-500 px-1 rounded"
+              >
+                ✎
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveSound(sound.id);
+                }}
+                className="text-[10px] bg-red-600 hover:bg-red-500 px-1 rounded"
+              >
+                ✕
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-dark-400 text-2xl">
+            +
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderRoundButton = (row: number, col: number, section: 'bottom' | 'side') => {
+    const slotKey = `${section}-${row}-${col}`;
+    const sound = getSoundAtPosition(row, col);
+    const isHovered = hoveredSlot === slotKey;
+
+    return (
+      <div
+        key={slotKey}
+        className={`
+          relative w-full aspect-square border-2 rounded-full transition-all cursor-pointer flex flex-col items-center justify-center p-2
+          ${sound ? 'border-green-500 bg-green-900 hover:bg-green-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
+          ${isHovered ? 'ring-2 ring-green-400' : ''}
+        `}
         onMouseEnter={() => setHoveredSlot(slotKey)}
         onMouseLeave={() => setHoveredSlot(null)}
         onClick={() => {
@@ -58,65 +113,78 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
             onAssignSound(row, col, section);
           }
         }}
-        onContextMenu={(e) => {
-          e.preventDefault();
+        title={sound ? `${sound.name} (Click to play)` : 'Click to assign sound'}
+      >
+        {sound ? (
+          <div className="text-[10px] font-medium text-center truncate w-full">{sound.name}</div>
+        ) : (
+          <div className="text-dark-400 text-xl">+</div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSquareButton = (row: number, col: number) => {
+    const slotKey = `side-${row}-${col}`;
+    const sound = getSoundAtPosition(row, col);
+    const isHovered = hoveredSlot === slotKey;
+
+    return (
+      <div
+        key={slotKey}
+        className={`
+          relative w-full aspect-square border-2 transition-all cursor-pointer flex items-center justify-center p-2
+          ${sound ? 'border-red-500 bg-red-900 hover:bg-red-800' : 'border-dark-500 bg-dark-700 hover:bg-dark-600'}
+          ${isHovered ? 'ring-2 ring-red-400' : ''}
+        `}
+        onMouseEnter={() => setHoveredSlot(slotKey)}
+        onMouseLeave={() => setHoveredSlot(null)}
+        onClick={() => {
           if (sound) {
-            onRemoveSound(sound.id);
+            onPlaySound(sound.id);
+          } else {
+            onAssignSound(row, col, 'side');
           }
         }}
-        title={sound ? `${sound.name} (Right-click to remove)` : 'Click to assign sound'}
+        title={sound ? `${sound.name} (Click to play)` : 'Click to assign sound'}
       >
-        {sound && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[10px] font-medium text-center px-1 overflow-hidden text-ellipsis whitespace-nowrap">
-              {sound.name}
-            </span>
-          </div>
-        )}
-        {!sound && (
-          <div className="absolute inset-0 flex items-center justify-center text-dark-400 text-xs">
-            +
-          </div>
+        {sound ? (
+          <div className="text-[10px] font-medium text-center truncate w-full">{sound.name}</div>
+        ) : (
+          <div className="text-dark-400 text-xl">+</div>
         )}
       </div>
     );
   };
 
   return (
-    <div className="p-4 h-full flex items-center justify-center">
-      <div className="flex flex-col gap-3">
-        {/* Main 8x8 Grid */}
-        <div className="grid grid-cols-8 gap-2">
-          {[...Array(8)].map((_, row) =>
-            [...Array(8)].map((_, col) => (
-              <div key={`${row}-${col}`} className="w-16 h-8">
-                {renderSlot(row, col, 'grid')}
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Bottom row and side column container */}
-        <div className="flex gap-2">
-          {/* Bottom 8 rounded buttons */}
-          <div className="grid grid-cols-8 gap-2 flex-1">
-            {[...Array(8)].map((_, col) => (
-              <div key={`bottom-${col}`} className="w-16 h-16">
-                {renderSlot(0, col, 'bottom', true)}
-              </div>
-            ))}
+    <div className="p-4 h-full flex items-start justify-center overflow-auto">
+      <div className="flex flex-col gap-4">
+        {/* Top section: 8x8 grid + side column */}
+        <div className="flex gap-4">
+          {/* Main 8x8 Grid */}
+          <div className="grid grid-cols-8 gap-2" style={{ width: '640px' }}>
+            {[...Array(8)].map((_, row) =>
+              [...Array(8)].map((_, col) => renderGridButton(row, col))
+            )}
           </div>
 
-          {/* Right side column: 8 rounded + 1 square */}
-          <div className="flex flex-col gap-2">
-            {[...Array(8)].map((_, row) => (
-              <div key={`side-${row}`} className="w-16 h-16">
-                {renderSlot(row, 0, 'side', true)}
-              </div>
-            ))}
-            <div className="w-16 h-16">
-              {renderSlot(8, 0, 'side', false, true)}
-            </div>
+          {/* Right side column: 8 rounded buttons */}
+          <div className="flex flex-col gap-2" style={{ width: '80px' }}>
+            {[...Array(8)].map((_, row) => renderRoundButton(row, 0, 'side'))}
+          </div>
+        </div>
+
+        {/* Bottom section: 8 rounded buttons + square button */}
+        <div className="flex gap-4">
+          {/* Bottom 8 rounded buttons */}
+          <div className="grid grid-cols-8 gap-2" style={{ width: '640px' }}>
+            {[...Array(8)].map((_, col) => renderRoundButton(0, col, 'bottom'))}
+          </div>
+
+          {/* Bottom-right square button */}
+          <div style={{ width: '80px' }}>
+            {renderSquareButton(8, 0)}
           </div>
         </div>
       </div>
