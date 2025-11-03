@@ -25,6 +25,8 @@ declare global {
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
       saveSynthSound: (noteName: string, audioData: Uint8Array) => Promise<string>;
       getTempDir: () => Promise<string>;
+      on: (channel: string, callback: (...args: any[]) => void) => void;
+      removeListener: (channel: string, callback: (...args: any[]) => void) => void;
     };
   }
 }

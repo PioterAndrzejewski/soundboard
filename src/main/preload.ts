@@ -76,6 +76,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // System paths
   getTempDir: () =>
     ipcRenderer.invoke('get-temp-dir'),
+
+  // Menu IPC event listeners
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.on(channel, (_event, ...args) => callback(...args));
+  },
+
+  removeListener: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.removeListener(channel, callback);
+  },
 });
 
 // Expose audioIO for WaveformEditor
@@ -126,6 +135,8 @@ declare global {
       readAudioFile: (filePath: string) => Promise<ArrayBuffer>;
       saveSynthSound: (noteName: string, audioData: Uint8Array) => Promise<string>;
       getTempDir: () => Promise<string>;
+      on: (channel: string, callback: (...args: any[]) => void) => void;
+      removeListener: (channel: string, callback: (...args: any[]) => void) => void;
     };
     audioIO: {
       readFile: (filePath: string) => Promise<ArrayBuffer>;

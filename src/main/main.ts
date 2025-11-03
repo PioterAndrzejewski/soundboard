@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { StorageManager } from './storage';
@@ -11,6 +11,71 @@ app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
 let mainWindow: BrowserWindow | null = null;
 let storageManager: StorageManager;
 let projectManager: ProjectManager;
+
+function createMenu() {
+  const template: any[] = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Project',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            mainWindow?.webContents.send('menu-new-project');
+          }
+        },
+        {
+          label: 'Open Project...',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            mainWindow?.webContents.send('menu-open-project');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Save',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            mainWindow?.webContents.send('menu-save-project');
+          }
+        },
+        {
+          label: 'Save As...',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            mainWindow?.webContents.send('menu-save-project-as');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Add Sound...',
+          accelerator: 'CmdOrCtrl+I',
+          click: () => {
+            mainWindow?.webContents.send('menu-add-sound');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Revert to Auto-save',
+          click: () => {
+            mainWindow?.webContents.send('menu-revert-autosave');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Quit',
+          accelerator: 'CmdOrCtrl+Q',
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -265,6 +330,7 @@ app.whenReady().then(() => {
   storageManager = new StorageManager();
   projectManager = new ProjectManager();
   setupIpcHandlers();
+  createMenu();
   createWindow();
 
   app.on('activate', () => {

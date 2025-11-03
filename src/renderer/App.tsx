@@ -195,6 +195,34 @@ const App: React.FC = () => {
     }
   }, [settings]);
 
+  // Handle menu actions from main process
+  useEffect(() => {
+    const handleMenuNewProject = () => handleNewProject();
+    const handleMenuOpenProject = () => handleLoadProject();
+    const handleMenuSaveProject = () => handleSaveProject();
+    const handleMenuSaveProjectAs = () => handleSaveProjectAs();
+    const handleMenuAddSound = () => handleAddSound();
+    const handleMenuRevertAutosave = () => handleRevertAutoSave();
+
+    // Add listeners
+    window.electronAPI.on('menu-new-project', handleMenuNewProject);
+    window.electronAPI.on('menu-open-project', handleMenuOpenProject);
+    window.electronAPI.on('menu-save-project', handleMenuSaveProject);
+    window.electronAPI.on('menu-save-project-as', handleMenuSaveProjectAs);
+    window.electronAPI.on('menu-add-sound', handleMenuAddSound);
+    window.electronAPI.on('menu-revert-autosave', handleMenuRevertAutosave);
+
+    // Cleanup
+    return () => {
+      window.electronAPI.removeListener('menu-new-project', handleMenuNewProject);
+      window.electronAPI.removeListener('menu-open-project', handleMenuOpenProject);
+      window.electronAPI.removeListener('menu-save-project', handleMenuSaveProject);
+      window.electronAPI.removeListener('menu-save-project-as', handleMenuSaveProjectAs);
+      window.electronAPI.removeListener('menu-add-sound', handleMenuAddSound);
+      window.electronAPI.removeListener('menu-revert-autosave', handleMenuRevertAutosave);
+    };
+  }, []);
+
   // Handle MIDI messages for volume and stop-all controls
   useEffect(() => {
     if (!midiHandlerRef.current) return;
