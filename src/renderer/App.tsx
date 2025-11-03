@@ -378,12 +378,19 @@ const App: React.FC = () => {
       const shouldAcceptMessage = isAPCRightKnob ? message.type === "cc" : message.type === "noteon";
 
       if (shouldAcceptMessage) {
+        // For APC RIGHT knobs, determine expected ccValue based on column
+        // col=0 (left button) expects ccValue=127, col=1 (right button) expects ccValue=1
+        let expectedCcValue: number | undefined;
+        if (isAPCRightKnob && sound?.slotPosition) {
+          expectedCcValue = sound.slotPosition.col === 0 ? 127 : 1;
+        }
+
         const midiMapping = isAPCRightKnob
           ? {
               deviceId: message.deviceId,
               deviceName: message.deviceName,
               ccNumber: message.ccNumber,
-              ccValue: message.value, // Capture the specific CC value (1 or 127)
+              ccValue: expectedCcValue, // Set based on button position
               channel: message.channel,
             }
           : {
@@ -765,9 +772,10 @@ const App: React.FC = () => {
           adjustedRow = row;
           adjustedCol = 0;
         } else if (section === 'knobs' || section === 'buttons') {
-          // For APC RIGHT knobs and buttons, use row as-is
+          // For APC RIGHT knobs and buttons, use row and col as-is
+          // col=0 for left button, col=1 for right button
           adjustedRow = row;
-          adjustedCol = 0;
+          adjustedCol = col;
         }
 
         // Assign to active tab with slot position

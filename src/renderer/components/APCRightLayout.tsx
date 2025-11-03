@@ -24,18 +24,22 @@ const APCRightLayout: React.FC<APCRightLayoutProps> = ({
 
   // Position mapping:
   // Knobs: row 0-7 (8 knobs total, arranged in 2 rows of 4)
+  // Each knob has 2 buttons: left (col=0) and right (col=1)
   // These knobs use CC-based MIDI mappings (not note-based)
-  // Each knob can have 2 sounds: one for CC value 1 (right turn) and one for CC value 127 (left turn)
+  // Left button: CC value 127, Right button: CC value 1
 
   const getSoundsAtPosition = (row: number): { right?: Sound; left?: Sound } => {
-    const knobSounds = sounds.filter(s =>
+    const left = sounds.find(s =>
       s.slotPosition?.row === row &&
       s.slotPosition?.col === 0 &&
       s.tabId === tabId
     );
 
-    const right = knobSounds.find(s => s.midiMapping?.ccValue === 1);
-    const left = knobSounds.find(s => s.midiMapping?.ccValue === 127);
+    const right = sounds.find(s =>
+      s.slotPosition?.row === row &&
+      s.slotPosition?.col === 1 &&
+      s.tabId === tabId
+    );
 
     return { right, left };
   };
@@ -62,7 +66,8 @@ const APCRightLayout: React.FC<APCRightLayoutProps> = ({
             if (sound) {
               onPlaySound(sound.id);
             } else {
-              onAssignSound(knobIndex, 0, 'knobs');
+              // Pass col=0 for left, col=1 for right
+              onAssignSound(knobIndex, side === 'left' ? 0 : 1, 'knobs');
             }
           }}
           title={sound ? `${sound.name} - Click to play` : `Assign sound (${side})`}
