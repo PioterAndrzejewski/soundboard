@@ -58,22 +58,18 @@ export class SoundManager {
         message.channel === mapping.channel &&
         message.ccNumber === mapping.ccNumber
       ) {
-        // For AKAI APC RIGHT knobs: value 1 = turn right (play forward), value 127 = turn left (play backward)
-        if (message.value === 1) {
-          // Turn right - play forward
-          this.audioEngine.playSound(sound, 127).catch((error) => {
-            console.error(`Failed to play sound ${sound.name}:`, error);
-          });
-        } else if (message.value === 127) {
-          // Turn left - play backward
-          this.audioEngine.playSoundReverse(sound, 127).catch((error) => {
-            console.error(`Failed to play sound ${sound.name} in reverse:`, error);
-          });
-        }
+        // Check if this sound requires a specific CC value
+        if (mapping.ccValue !== undefined) {
+          // Only trigger if the CC value matches exactly
+          if (message.value === mapping.ccValue) {
+            this.audioEngine.playSound(sound, 127).catch((error) => {
+              console.error(`Failed to play sound ${sound.name}:`, error);
+            });
 
-        // Notify that sound was triggered
-        if (this.onSoundTriggeredCallback) {
-          this.onSoundTriggeredCallback(sound.id);
+            if (this.onSoundTriggeredCallback) {
+              this.onSoundTriggeredCallback(sound.id);
+            }
+          }
         }
       }
     });
@@ -131,10 +127,14 @@ export class SoundManager {
     }
   }
 
-  private getMappingKey(mapping: { deviceId: string; note?: number; ccNumber?: number; channel: number }): string {
+  private getMappingKey(mapping: { deviceId: string; note?: number; ccNumber?: number; ccValue?: number; channel: number }): string {
     if (mapping.note !== undefined) {
       return `${mapping.deviceId}:${mapping.channel}:note:${mapping.note}`;
     } else if (mapping.ccNumber !== undefined) {
+      // Include ccValue in the key if specified (for bidirectional knobs)
+      if (mapping.ccValue !== undefined) {
+        return `${mapping.deviceId}:${mapping.channel}:cc:${mapping.ccNumber}:${mapping.ccValue}`;
+      }
       return `${mapping.deviceId}:${mapping.channel}:cc:${mapping.ccNumber}`;
     }
     return `${mapping.deviceId}:${mapping.channel}`;

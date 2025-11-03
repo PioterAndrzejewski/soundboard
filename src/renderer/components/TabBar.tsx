@@ -14,6 +14,9 @@ const TabBar: React.FC = () => {
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const [dragOverTabId, setDragOverTabId] = useState<string | null>(null);
 
+  // Sort tabs by their order property for display
+  const sortedTabs = [...tabs].sort((a, b) => a.order - b.order);
+
   const predefinedColors = [
     '#3b82f6', // blue
     '#10b981', // green
@@ -50,10 +53,10 @@ const TabBar: React.FC = () => {
 
   const handleDeleteTab = (e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
-    if (tabs.length > 1) {
+    if (sortedTabs.length > 1) {
       if (window.confirm('Delete this tab? Sounds in this tab will be moved to the first tab.')) {
         // First reassign all sounds from this tab to the first tab
-        const firstTab = tabs.find(t => t.id !== tabId);
+        const firstTab = sortedTabs.find(t => t.id !== tabId);
         if (firstTab) {
           dispatch(reassignSoundsTab({ fromTabId: tabId, toTabId: firstTab.id }));
         }
@@ -87,12 +90,12 @@ const TabBar: React.FC = () => {
       return;
     }
 
-    const draggedIndex = tabs.findIndex(t => t.id === draggedTabId);
-    const targetIndex = tabs.findIndex(t => t.id === targetTabId);
+    const draggedIndex = sortedTabs.findIndex(t => t.id === draggedTabId);
+    const targetIndex = sortedTabs.findIndex(t => t.id === targetTabId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
-    const newTabs = [...tabs];
+    const newTabs = [...sortedTabs];
     const [draggedTab] = newTabs.splice(draggedIndex, 1);
     newTabs.splice(targetIndex, 0, draggedTab);
 
@@ -109,12 +112,12 @@ const TabBar: React.FC = () => {
     dispatch(setTabMidiMapping({ tabId, mapping: undefined }));
   };
 
-  const settingsTab = settingsModalTabId ? tabs.find(t => t.id === settingsModalTabId) : null;
+  const settingsTab = settingsModalTabId ? sortedTabs.find(t => t.id === settingsModalTabId) : null;
 
   return (
     <>
       <div className="bg-dark-800 border-b border-dark-600 flex items-center gap-1 overflow-x-auto relative z-20">
-        {tabs.map((tab) => (
+        {sortedTabs.map((tab) => (
           <div
             key={tab.id}
             className="relative group"
@@ -157,7 +160,7 @@ const TabBar: React.FC = () => {
                 </span>
               )}
 
-              {tabs.length > 1 && activeTabId === tab.id && (
+              {sortedTabs.length > 1 && activeTabId === tab.id && (
                 <button
                   onClick={(e) => handleDeleteTab(e, tab.id)}
                   className="opacity-0 group-hover:opacity-100 text-xs text-dark-300 hover:text-red-400 transition-opacity"

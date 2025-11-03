@@ -383,6 +383,7 @@ const App: React.FC = () => {
               deviceId: message.deviceId,
               deviceName: message.deviceName,
               ccNumber: message.ccNumber,
+              ccValue: message.value, // Capture the specific CC value (1 or 127)
               channel: message.channel,
             }
           : {

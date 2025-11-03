@@ -7,6 +7,7 @@ export interface MidiMapping {
   deviceName: string;
   note?: number; // MIDI note number (0-127) - for buttons/keys
   ccNumber?: number; // Control Change number (0-127) - for knobs/faders
+  ccValue?: number; // Specific CC value to trigger (1 or 127 for bidirectional knobs)
   channel: number; // MIDI channel (0-15)
 }
 
