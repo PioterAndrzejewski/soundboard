@@ -99,10 +99,44 @@ export class AudioEngine {
       this.reverbNode = this.audioContext.createConvolver();
       this.reverbNode.buffer = this.createReverbImpulse();
 
+      // Connect the effects chain ONCE during initialization
+      this.setupEffectsChain();
+
       console.log('✅ Web Audio API initialized with effects chain');
     } catch (error) {
       console.error('Failed to initialize Web Audio API:', error);
     }
+  }
+
+  private setupEffectsChain(): void {
+    if (!this.audioContext || !this.masterGainNode) return;
+
+    // Set up the effects chain connections ONCE
+    // These connections will be reused for all sounds
+
+    // Main signal chain: panner -> filters -> distortion
+    this.pannerNode!.connect(this.lowShelfFilter!);
+    this.lowShelfFilter!.connect(this.midPeakFilter!);
+    this.midPeakFilter!.connect(this.highShelfFilter!);
+    this.highShelfFilter!.connect(this.distortionNode!);
+
+    // Distortion output goes to master gain (dry signal path)
+    this.distortionNode!.connect(this.masterGainNode);
+
+    // Delay send/return from distortion output
+    this.distortionNode!.connect(this.delayNode!);
+    this.delayNode!.connect(this.delayFeedback!);
+    this.delayFeedback!.connect(this.delayNode!); // feedback loop
+    this.delayNode!.connect(this.delayWet!);
+    this.delayWet!.connect(this.masterGainNode);
+
+    // Reverb send/return from distortion output
+    this.distortionNode!.connect(this.reverbNode!);
+    this.reverbNode!.connect(this.reverbWet!);
+    this.reverbWet!.connect(this.masterGainNode);
+
+    // Master to destination - ONLY CONNECTED ONCE HERE
+    this.masterGainNode.connect(this.audioContext.destination);
   }
 
   private makeDistortionCurve(amount: number): Float32Array | null {
@@ -195,37 +229,12 @@ export class AudioEngine {
     });
   }
 
-  private connectEffectsChain(source: AudioNode): void {
-    if (!this.audioContext || !this.masterGainNode) return;
+  private connectSourceToEffects(source: AudioNode): void {
+    if (!this.audioContext || !this.pannerNode) return;
 
-    const dryGain = this.audioContext.createGain();
-    dryGain.gain.value = 1;
-
-    // Main signal chain: source -> panner -> filters -> distortion -> dry gain -> master
-    source.connect(this.pannerNode!);
-    this.pannerNode!.connect(this.lowShelfFilter!);
-    this.lowShelfFilter!.connect(this.midPeakFilter!);
-    this.midPeakFilter!.connect(this.highShelfFilter!);
-    this.highShelfFilter!.connect(this.distortionNode!);
-    this.distortionNode!.connect(dryGain);
-
-    // Delay send/return
-    dryGain.connect(this.delayNode!);
-    this.delayNode!.connect(this.delayFeedback!);
-    this.delayFeedback!.connect(this.delayNode!); // feedback loop
-    this.delayNode!.connect(this.delayWet!);
-    this.delayWet!.connect(this.masterGainNode);
-
-    // Reverb send/return
-    dryGain.connect(this.reverbNode!);
-    this.reverbNode!.connect(this.reverbWet!);
-    this.reverbWet!.connect(this.masterGainNode);
-
-    // Dry signal to master
-    dryGain.connect(this.masterGainNode);
-
-    // Master to destination
-    this.masterGainNode.connect(this.audioContext.destination);
+    // Simply connect the new audio source to the beginning of the pre-configured effects chain
+    // The effects chain is already set up and connected to the destination in setupEffectsChain()
+    source.connect(this.pannerNode);
   }
 
   public setMasterVolume(volume: number): void {
@@ -406,7 +415,7 @@ export class AudioEngine {
       try {
         console.log(`🎚️ Connecting to Web Audio API effects chain...`);
         source = this.audioContext.createMediaElementSource(audio);
-        this.connectEffectsChain(source);
+        this.connectSourceToEffects(source);
         console.log(`✅ Connected to effects chain`);
       } catch (error) {
         console.warn('❌ Failed to connect audio to effects chain:', error);
