@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { addTab, removeTab, renameTab, setTabColor, setActiveTab, reorderTabs, setTabMidiMapping } from '../store/tabsSlice';
+import { addTab, removeTab, renameTab, setTabColor, setActiveTab, reorderTabs, setTabMidiMapping, setTabVolume, setTabVolumeMapping } from '../store/tabsSlice';
 import { reassignSoundsTab } from '../store/soundsSlice';
-import { startMidiListening } from '../store/uiSlice';
+import { startMidiListening, setDirty } from '../store/uiSlice';
 
 const TabBar: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -70,6 +70,20 @@ const TabBar: React.FC = () => {
 
   const handleRemoveMidiFromTab = (tabId: string) => {
     dispatch(setTabMidiMapping({ tabId, mapping: undefined }));
+  };
+
+  const handleVolumeChange = (tabId: string, volume: number) => {
+    dispatch(setTabVolume({ tabId, volume }));
+    dispatch(setDirty(true));
+  };
+
+  const handleAssignVolumeMapping = (tabId: string) => {
+    dispatch(startMidiListening({ mode: 'tab-volume', target: tabId }));
+  };
+
+  const handleRemoveVolumeMapping = (tabId: string) => {
+    dispatch(setTabVolumeMapping({ tabId, mapping: undefined }));
+    dispatch(setDirty(true));
   };
 
   const handleMoveTabLeft = (e: React.MouseEvent, tabId: string) => {
@@ -419,6 +433,60 @@ const TabBar: React.FC = () => {
               )}
               <p className="text-xs text-dark-400 mt-1">
                 Press a MIDI note to switch to this tab
+              </p>
+            </div>
+
+            {/* Tab Volume */}
+            <div className="mb-4">
+              <label className="block text-sm text-dark-200 mb-2">
+                Tab Volume: {((settingsTab.volume || 1) * 100).toFixed(0)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="3"
+                step="0.01"
+                value={settingsTab.volume || 1}
+                onChange={(e) => handleVolumeChange(settingsTab.id, parseFloat(e.target.value))}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-dark-400 mt-1">
+                <span>0%</span>
+                <span>100%</span>
+                <span>200%</span>
+                <span>300%</span>
+              </div>
+              <p className="text-xs text-dark-400 mt-1">
+                Volume multiplier for all sounds in this tab (allows boosting beyond 100%)
+              </p>
+            </div>
+
+            {/* Tab Volume MIDI Mapping */}
+            <div className="mb-6">
+              <label className="block text-sm text-dark-200 mb-2">Volume MIDI Control</label>
+              {settingsTab.volumeMapping ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2 bg-dark-600 border border-dark-500 rounded text-sm text-dark-100">
+                    🎛️ CC {settingsTab.volumeMapping.ccNumber} (Ch {settingsTab.volumeMapping.channel + 1})
+                  </div>
+                  <button
+                    onClick={() => handleRemoveVolumeMapping(settingsTab.id)}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
+                    title="Remove volume MIDI mapping"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleAssignVolumeMapping(settingsTab.id)}
+                  className="w-full px-3 py-2 bg-dark-600 hover:bg-dark-500 border border-dark-500 rounded text-sm transition-colors"
+                >
+                  🎛️ Assign MIDI CC
+                </button>
+              )}
+              <p className="text-xs text-dark-400 mt-1">
+                Use a MIDI fader/knob to control volume for this tab
               </p>
             </div>
 

@@ -21,7 +21,7 @@ import {
   openSettingsModal,
   startMidiListening,
 } from "./store/uiSlice";
-import { setTabs, setTabMidiMapping, setActiveTab, setTabRowLabel } from "./store/tabsSlice";
+import { setTabs, setTabMidiMapping, setTabVolumeMapping, setActiveTab, setTabRowLabel } from "./store/tabsSlice";
 import { AudioEngine } from "./audioEngine";
 import { MidiHandler } from "./midiHandler";
 import { SoundManager } from "./soundManager";
@@ -89,7 +89,8 @@ const App: React.FC = () => {
         soundManagerRef.current = new SoundManager(
           audioEngineRef.current,
           midiHandlerRef.current,
-          settings
+          settings,
+          tabs
         );
 
         // Set up callback for MIDI-triggered sounds
@@ -227,6 +228,13 @@ const App: React.FC = () => {
     }
   }, [settings]);
 
+  // Update tabs in sound manager when they change
+  useEffect(() => {
+    if (soundManagerRef.current) {
+      soundManagerRef.current.setTabs(tabs);
+    }
+  }, [tabs]);
+
   // Handle menu actions from main process
   useEffect(() => {
     const handleMenuNewProject = () => handleNewProject();
@@ -286,6 +294,29 @@ const App: React.FC = () => {
           });
           const volume = message.value / 127;
           dispatch(setMasterVolume(volume));
+        }
+      }
+
+      // Handle tab volume mappings
+      if (message.type === "cc") {
+        for (const tab of tabs) {
+          if (tab.volumeMapping) {
+            const vm = tab.volumeMapping;
+            if (
+              message.deviceId === vm.deviceId &&
+              message.ccNumber === vm.ccNumber &&
+              message.channel === vm.channel
+            ) {
+              console.log(`✅ Matched tab volume mapping for "${tab.name}"!`, {
+                value: message.value,
+                volume: (message.value / 127) * 3, // 0-3 range for tab volume
+              });
+              const volume = (message.value / 127) * 3; // Map 0-127 to 0-3
+              dispatch({ type: 'tabs/updateTab', payload: { id: tab.id, updates: { volume } } });
+              dispatch(setDirty(true));
+              break;
+            }
+          }
         }
       }
 
@@ -351,6 +382,7 @@ const App: React.FC = () => {
     settings.volumeMapping,
     settings.stopAllMapping,
     settings.effectsMidiMappings,
+    tabs,
     dispatch,
   ]);
 
@@ -536,6 +568,47 @@ const App: React.FC = () => {
     midiHandlerRef.current,
     ui.isMidiListening,
     ui.tabListeningTarget,
+    dispatch,
+  ]);
+
+  // Handle MIDI assignment for tab volume
+  useEffect(() => {
+    if (
+      !midiHandlerRef.current ||
+      !ui.isMidiListening ||
+      !ui.tabVolumeListeningTarget
+    )
+      return;
+
+    const handleMidiMessage = (message: any) => {
+      if (message.type === "cc") {
+        // Assign MIDI CC mapping to tab volume
+        dispatch(
+          setTabVolumeMapping({
+            tabId: ui.tabVolumeListeningTarget!,
+            mapping: {
+              deviceId: message.deviceId,
+              deviceName: message.deviceName,
+              ccNumber: message.ccNumber,
+              channel: message.channel,
+            },
+          })
+        );
+
+        // Stop listening and mark as dirty
+        dispatch(stopMidiListening());
+        dispatch(setDirty(true));
+      }
+    };
+
+    midiHandlerRef.current.addListener(handleMidiMessage);
+    return () => {
+      midiHandlerRef.current?.removeListener(handleMidiMessage);
+    };
+  }, [
+    midiHandlerRef.current,
+    ui.isMidiListening,
+    ui.tabVolumeListeningTarget,
     dispatch,
   ]);
 

@@ -1,4 +1,4 @@
-import { Sound, MidiMessage, AppSettings } from '../shared/types';
+import { Sound, MidiMessage, AppSettings, Tab } from '../shared/types';
 import { AudioEngine } from './audioEngine';
 import { MidiHandler } from './midiHandler';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,21 +7,41 @@ export class SoundManager {
   private audioEngine: AudioEngine;
   private midiHandler: MidiHandler;
   private sounds: Map<string, Sound> = new Map();
+  private tabs: Map<string, Tab> = new Map();
   private settings: AppSettings;
   private activeSoundsPerMapping: Map<string, string[]> = new Map(); // midiKey -> playingIds
   private onSoundTriggeredCallback: ((soundId: string) => void) | null = null;
 
-  constructor(audioEngine: AudioEngine, midiHandler: MidiHandler, settings: AppSettings) {
+  constructor(audioEngine: AudioEngine, midiHandler: MidiHandler, settings: AppSettings, tabs: Tab[] = []) {
     this.audioEngine = audioEngine;
     this.midiHandler = midiHandler;
     // Create a copy of settings to avoid mutating Redux state
     this.settings = { ...settings };
+
+    // Store tabs
+    tabs.forEach(tab => this.tabs.set(tab.id, tab));
 
     // Set initial master volume
     this.audioEngine.setMasterVolume(settings.masterVolume);
 
     // Listen to MIDI messages
     this.midiHandler.addListener(this.handleMidiMessage.bind(this));
+  }
+
+  public setTabs(tabs: Tab[]): void {
+    this.tabs.clear();
+    tabs.forEach(tab => this.tabs.set(tab.id, tab));
+  }
+
+  private getTabVolume(sound: Sound): number {
+    // Get the tab volume for this sound (default to 1 if no tab or no volume set)
+    if (sound.tabId) {
+      const tab = this.tabs.get(sound.tabId);
+      if (tab && tab.volume !== undefined) {
+        return tab.volume;
+      }
+    }
+    return 1; // Default volume multiplier
   }
 
   public onSoundTriggered(callback: (soundId: string) => void): void {
@@ -62,7 +82,8 @@ export class SoundManager {
         if (mapping.ccValue !== undefined) {
           // Only trigger if the CC value matches exactly
           if (message.value === mapping.ccValue) {
-            this.audioEngine.playSound(sound, 127).catch((error) => {
+            const tabVolume = this.getTabVolume(sound);
+            this.audioEngine.playSound(sound, 127, tabVolume).catch((error) => {
               console.error(`Failed to play sound ${sound.name}:`, error);
             });
 
@@ -77,6 +98,7 @@ export class SoundManager {
 
   private handleNoteOn(sound: Sound, velocity: number): void {
     const mappingKey = this.getMappingKey(sound.midiMapping!);
+    const tabVolume = this.getTabVolume(sound);
 
     // Notify that sound was triggered
     if (this.onSoundTriggeredCallback) {
@@ -85,17 +107,17 @@ export class SoundManager {
 
     if (sound.settings.playMode === 'trigger') {
       // Trigger mode: start playing, don't track for note off
-      this.audioEngine.playSound(sound, velocity).catch((error) => {
+      this.audioEngine.playSound(sound, velocity, tabVolume).catch((error) => {
         console.error(`Failed to play sound ${sound.name}:`, error);
       });
     } else if (sound.settings.playMode === 'trigger-stop') {
       // Trigger-stop mode: toggle play/stop, audioEngine handles the logic
-      this.audioEngine.playSound(sound, velocity).catch((error) => {
+      this.audioEngine.playSound(sound, velocity, tabVolume).catch((error) => {
         console.error(`Failed to play sound ${sound.name}:`, error);
       });
     } else if (sound.settings.playMode === 'gate') {
       // Gate mode: start playing and track for note off
-      this.audioEngine.playSound(sound, velocity).then((playingId) => {
+      this.audioEngine.playSound(sound, velocity, tabVolume).then((playingId) => {
         if (!this.activeSoundsPerMapping.has(mappingKey)) {
           this.activeSoundsPerMapping.set(mappingKey, []);
         }
@@ -105,7 +127,7 @@ export class SoundManager {
       });
     } else if (sound.settings.playMode === 'loop') {
       // Loop mode: toggle play/stop, audioEngine handles the logic (like trigger-stop)
-      this.audioEngine.playSound(sound, velocity).catch((error) => {
+      this.audioEngine.playSound(sound, velocity, tabVolume).catch((error) => {
         console.error(`Failed to play sound ${sound.name}:`, error);
       });
     }
@@ -215,7 +237,8 @@ export class SoundManager {
     const sound = this.sounds.get(soundId);
     if (sound) {
       console.log(`✅ Sound found in manager: ${sound.name}`);
-      await this.audioEngine.playSound(sound);
+      const tabVolume = this.getTabVolume(sound);
+      await this.audioEngine.playSound(sound, 127, tabVolume);
     } else {
       console.error(`❌ Sound not found in manager: ${soundId}`);
       console.log(`Available sounds:`, Array.from(this.sounds.keys()));
