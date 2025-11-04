@@ -142,12 +142,22 @@ export class AudioEngine {
   private makeDistortionCurve(amount: number): Float32Array | null {
     const samples = 44100;
     const curve = new Float32Array(samples);
-    const deg = Math.PI / 180;
-    const k = amount * 100;
 
-    for (let i = 0; i < samples; i++) {
-      const x = (i * 2) / samples - 1;
-      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+    if (amount === 0) {
+      // When distortion is 0, create a linear curve (unity gain, no change to signal)
+      for (let i = 0; i < samples; i++) {
+        const x = (i * 2) / samples - 1;
+        curve[i] = x;
+      }
+    } else {
+      // Apply distortion curve
+      const deg = Math.PI / 180;
+      const k = amount * 100;
+
+      for (let i = 0; i < samples; i++) {
+        const x = (i * 2) / samples - 1;
+        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+      }
     }
     return curve as any;
   }
