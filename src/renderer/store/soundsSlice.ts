@@ -38,8 +38,15 @@ const soundsSlice = createSlice({
         }
       });
     },
+    updateAllSoundsVolumeInTab: (state, action: PayloadAction<{ tabId: string; volume: number }>) => {
+      state.sounds.forEach(sound => {
+        if (sound.tabId === action.payload.tabId) {
+          sound.settings.volume = action.payload.volume;
+        }
+      });
+    },
   },
 });
 
-export const { setSounds, addSound, removeSound, updateSound, reorderSounds, reassignSoundsTab } = soundsSlice.actions;
+export const { setSounds, addSound, removeSound, updateSound, reorderSounds, reassignSoundsTab, updateAllSoundsVolumeInTab } = soundsSlice.actions;
 export default soundsSlice.reducer;

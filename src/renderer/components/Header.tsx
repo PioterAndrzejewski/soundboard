@@ -12,6 +12,7 @@ interface HeaderProps {
   onLoad: () => void;
   onAddSound: () => void;
   onRevertAutoSave?: () => void;
+  onOpenGlobalSettings: () => void;
   midiHandler?: any;
 }
 
@@ -24,6 +25,7 @@ const Header: React.FC<HeaderProps> = ({
   onLoad,
   onAddSound,
   onRevertAutoSave,
+  onOpenGlobalSettings,
   midiHandler,
 }) => {
   const dispatch = useAppDispatch();
@@ -286,6 +288,15 @@ const Header: React.FC<HeaderProps> = ({
           }
         >
           🎹
+        </button>
+
+        {/* Global Settings Button */}
+        <button
+          onClick={onOpenGlobalSettings}
+          className="px-3 py-1.5 bg-dark-500 hover:bg-dark-400 rounded text-sm transition-colors"
+          title="Global Settings"
+        >
+          ⚙️
         </button>
 
         <button

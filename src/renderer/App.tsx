@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
 import {
   setSounds,
@@ -6,6 +6,7 @@ import {
   removeSound,
   updateSound,
   reorderSounds,
+  updateAllSoundsVolumeInTab,
 } from "./store/soundsSlice";
 import { setSettings, setMasterVolume, updateSettings, setEffectValue, setEffectMidiMapping } from "./store/settingsSlice";
 import {
@@ -33,6 +34,7 @@ import APCKey25Layout from "./components/APCKey25Layout";
 import APCKeyLayout from "./components/APCKeyLayout";
 import APCRightLayout from "./components/APCRightLayout";
 import SoundSettingsModal from "./components/SoundSettingsModal";
+import GlobalSettingsModal from "./components/GlobalSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
 import BottomPanel from "./components/BottomPanel";
@@ -58,6 +60,9 @@ const App: React.FC = () => {
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const midiHandlerRef = useRef<MidiHandler | null>(null);
   const soundManagerRef = useRef<SoundManager | null>(null);
+
+  // State for global settings modal
+  const [isGlobalSettingsOpen, setIsGlobalSettingsOpen] = useState(false);
 
   // Initialize engines and auto-load last project
   useEffect(() => {
@@ -760,6 +765,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleOpenGlobalSettings = () => {
+    setIsGlobalSettingsOpen(true);
+  };
+
+  const handleSetAllSoundsVolume = (volume: number) => {
+    if (activeTabId) {
+      dispatch(updateAllSoundsVolumeInTab({ tabId: activeTabId, volume }));
+      dispatch(setDirty(true));
+    }
+  };
+
   const handleRevertAutoSave = async () => {
     try {
       const autoSaveData = await window.electronAPI.getAutoSave();
@@ -1077,6 +1093,7 @@ const App: React.FC = () => {
         onLoad={handleLoadProject}
         onAddSound={handleAddSound}
         onRevertAutoSave={handleRevertAutoSave}
+        onOpenGlobalSettings={handleOpenGlobalSettings}
         midiHandler={midiHandlerRef.current}
       />
 
@@ -1199,6 +1216,13 @@ const App: React.FC = () => {
       <SoundSettingsModal
         soundManager={soundManagerRef.current}
         midiHandler={midiHandlerRef.current}
+      />
+
+      <GlobalSettingsModal
+        isOpen={isGlobalSettingsOpen}
+        onClose={() => setIsGlobalSettingsOpen(false)}
+        currentTabId={activeTabId}
+        onSetAllSoundsVolume={handleSetAllSoundsVolume}
       />
 
       <MidiListeningOverlay
