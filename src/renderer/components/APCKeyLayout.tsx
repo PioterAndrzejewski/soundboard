@@ -224,10 +224,10 @@ const APCKeyLayout: React.FC<APCKeyLayoutProps> = ({
   return (
     <div className="p-1 h-full flex items-start justify-center overflow-auto">
       <div className="flex flex-col gap-1">
-        {/* Top section: row labels + 8x5 grid + right column (5 buttons) */}
-        <div className="flex gap-1">
-          {/* Row labels */}
-          <div className="flex flex-col gap-[1px]" style={{ width: '80px' }}>
+        {/* Top section: 8x5 grid + right column with row labels overlay */}
+        <div className="flex gap-1 relative">
+          {/* Row labels - absolutely positioned */}
+          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-around" style={{ width: '80px', pointerEvents: 'none' }}>
             {[...Array(5)].map((_, row) => {
               const label = tab.rowLabels?.[row] || '';
               const isEditing = editingRow === row;
@@ -236,7 +236,10 @@ const APCKeyLayout: React.FC<APCKeyLayoutProps> = ({
                 <div
                   key={`label-${row}`}
                   className="flex items-center justify-end pr-2 text-xs text-gray-400"
-                  style={{ height: '118px' }}
+                  style={{
+                    height: 'calc(20% - 0.4px)',
+                    pointerEvents: 'auto'
+                  }}
                 >
                   {isEditing ? (
                     <input
@@ -265,7 +268,7 @@ const APCKeyLayout: React.FC<APCKeyLayoutProps> = ({
           </div>
 
           {/* Main 8x5 Grid */}
-          <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px' }}>
+          <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px', marginLeft: '84px' }}>
             {[...Array(5)].map((_, row) =>
               [...Array(8)].map((_, col) => renderGridButton(row, col))
             )}
@@ -278,7 +281,7 @@ const APCKeyLayout: React.FC<APCKeyLayoutProps> = ({
         </div>
 
         {/* Bottom section: 9 square buttons */}
-        <div className="flex gap-1">
+        <div className="flex gap-1" style={{ marginLeft: '84px' }}>
           <div className="grid grid-cols-9 gap-[1px]" style={{ width: '1080px' }}>
             {[...Array(9)].map((_, col) => renderSquareButton(0, col, 'bottom'))}
           </div>

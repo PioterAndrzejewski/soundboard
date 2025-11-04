@@ -306,10 +306,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
   return (
     <div className="p-1 h-full flex items-start justify-center overflow-auto">
       <div className="flex flex-col gap-1">
-        {/* Top section: row labels + 8x8 grid + side column */}
-        <div className="flex gap-1">
-          {/* Row labels */}
-          <div className="flex flex-col gap-[1px]" style={{ width: '80px' }}>
+        {/* Top section: 8x8 grid + side column with row labels overlay */}
+        <div className="flex gap-1 relative">
+          {/* Row labels - absolutely positioned */}
+          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-around" style={{ width: '80px', pointerEvents: 'none' }}>
             {[...Array(8)].map((_, row) => {
               const label = tab.rowLabels?.[row] || '';
               const isEditing = editingRow === row;
@@ -318,7 +318,10 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
                 <div
                   key={`label-${row}`}
                   className="flex items-center justify-end pr-2 text-xs text-gray-400"
-                  style={{ height: '118px' }}
+                  style={{
+                    height: 'calc(12.5% - 0.125px)',
+                    pointerEvents: 'auto'
+                  }}
                 >
                   {isEditing ? (
                     <input
@@ -347,7 +350,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
           </div>
 
           {/* Main 8x8 Grid */}
-          <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px' }}>
+          <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px', marginLeft: '84px' }}>
             {[...Array(8)].map((_, row) =>
               [...Array(8)].map((_, col) => renderGridButton(row, col))
             )}
@@ -360,7 +363,7 @@ const APCMiniLayout: React.FC<APCMiniLayoutProps> = ({
         </div>
 
         {/* Bottom section: 8 rounded buttons + square button */}
-        <div className="flex gap-1">
+        <div className="flex gap-1" style={{ marginLeft: '84px' }}>
           {/* Bottom 8 rounded buttons */}
           <div className="grid grid-cols-8 gap-[1px]" style={{ width: '960px' }}>
             {[...Array(8)].map((_, col) => renderRoundButton(0, col, 'bottom'))}
