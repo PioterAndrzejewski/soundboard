@@ -5,6 +5,7 @@ interface PlayingSound {
   soundId: string;
   audio: HTMLAudioElement;
   source?: MediaElementAudioSourceNode;
+  gainNode?: GainNode;
   startTime: number;
   isGateMode: boolean;
   settings: SoundSettings;
@@ -37,7 +38,7 @@ export class AudioEngine {
       // Connect master gain to destination
       this.masterGainNode.connect(this.audioContext.destination);
 
-      console.log('✅ Web Audio API initialized');
+      console.log('✅ Web Audio API initialized with master volume:', this.masterVolume);
     } catch (error) {
       console.error('Failed to initialize Web Audio API:', error);
     }
@@ -52,18 +53,14 @@ export class AudioEngine {
 
   public setMasterVolume(volume: number): void {
     this.masterVolume = Math.max(0, Math.min(1, volume));
-    // Update volume for all currently playing sounds
-    this.playingSounds.forEach(ps => {
-      ps.audio.volume = this.calculateVolume(ps.settings.volume);
-    });
+    // Update master gain node
+    if (this.masterGainNode) {
+      this.masterGainNode.gain.value = this.masterVolume;
+    }
   }
 
   public getMasterVolume(): number {
     return this.masterVolume;
-  }
-
-  private calculateVolume(soundVolume: number): number {
-    return Math.max(0, Math.min(1, soundVolume * this.masterVolume));
   }
 
   public async setOutputDevice(deviceId: string | undefined): Promise<void> {
@@ -200,37 +197,47 @@ export class AudioEngine {
       }
     }
 
-    // Calculate volume based on sound settings and master volume
-    const targetVolume = sound.settings.volume;
-    audio.volume = this.calculateVolume(targetVolume);
-
-    // Apply fade in for gate, trigger, trigger-stop, and loop modes
-    if ((sound.settings.playMode === 'gate' || sound.settings.playMode === 'trigger' || sound.settings.playMode === 'trigger-stop' || sound.settings.playMode === 'loop') && sound.settings.fadeInMs > 0) {
-      audio.volume = 0;
-      const fadeSteps = 20;
-      const stepTime = sound.settings.fadeInMs / fadeSteps;
-      const volumeStep = this.calculateVolume(targetVolume) / fadeSteps;
-
-      let currentStep = 0;
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        audio.volume = Math.min(this.calculateVolume(targetVolume), volumeStep * currentStep);
-        if (currentStep >= fadeSteps) {
-          clearInterval(fadeInterval);
-        }
-      }, stepTime);
-    }
-
-    // Connect to Web Audio API master gain
+    // Connect to Web Audio API and set up gain
     let source: MediaElementAudioSourceNode | undefined;
+    let gainNode: GainNode | undefined;
+
     if (this.audioContext) {
       try {
         console.log(`🎚️ Connecting to Web Audio API...`);
         source = this.audioContext.createMediaElementSource(audio);
-        this.connectSourceToMaster(source);
-        console.log(`✅ Connected to master gain`);
+
+        // Create gain node for this sound
+        gainNode = this.audioContext.createGain();
+        gainNode.gain.value = sound.settings.volume;
+
+        // Connect: source -> gainNode -> masterGainNode
+        source.connect(gainNode);
+        if (this.masterGainNode) {
+          gainNode.connect(this.masterGainNode);
+        }
+
+        console.log(`✅ Connected to Web Audio with sound volume: ${sound.settings.volume}`);
+
+        // Apply fade in using gain node
+        if ((sound.settings.playMode === 'gate' || sound.settings.playMode === 'trigger' || sound.settings.playMode === 'trigger-stop' || sound.settings.playMode === 'loop') && sound.settings.fadeInMs > 0) {
+          gainNode.gain.value = 0;
+          const fadeSteps = 20;
+          const stepTime = sound.settings.fadeInMs / fadeSteps;
+          const volumeStep = sound.settings.volume / fadeSteps;
+
+          let currentStep = 0;
+          const fadeInterval = setInterval(() => {
+            currentStep++;
+            if (gainNode) {
+              gainNode.gain.value = Math.min(sound.settings.volume, volumeStep * currentStep);
+            }
+            if (currentStep >= fadeSteps) {
+              clearInterval(fadeInterval);
+            }
+          }, stepTime);
+        }
       } catch (error) {
-        console.warn('❌ Failed to connect audio to master gain:', error);
+        console.warn('❌ Failed to connect audio to Web Audio API:', error);
       }
     }
 
@@ -239,6 +246,7 @@ export class AudioEngine {
       soundId: sound.id,
       audio,
       source,
+      gainNode,
       startTime: Date.now(),
       isGateMode: sound.settings.playMode === 'gate',
       settings: sound.settings,
@@ -313,32 +321,40 @@ export class AudioEngine {
     const playingSound = this.playingSounds.get(playingId);
     if (!playingSound) return;
 
-    const { audio, settings } = playingSound;
+    const { audio, settings, gainNode } = playingSound;
 
     // Apply fade out for gate, trigger, trigger-stop, and loop modes
     if ((settings.playMode === 'gate' || settings.playMode === 'trigger' || settings.playMode === 'trigger-stop' || settings.playMode === 'loop') && settings.fadeOutMs > 0) {
-      // Apply fade out
-      const fadeSteps = 20;
-      const stepTime = settings.fadeOutMs / fadeSteps;
-      const startVolume = audio.volume;
-      const volumeStep = startVolume / fadeSteps;
+      // Apply fade out using gain node
+      if (gainNode) {
+        const fadeSteps = 20;
+        const stepTime = settings.fadeOutMs / fadeSteps;
+        const startVolume = gainNode.gain.value;
+        const volumeStep = startVolume / fadeSteps;
 
-      let currentStep = 0;
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        audio.volume = Math.max(0, startVolume - (volumeStep * currentStep));
-        if (currentStep >= fadeSteps) {
+        let currentStep = 0;
+        const fadeInterval = setInterval(() => {
+          currentStep++;
+          if (gainNode) {
+            gainNode.gain.value = Math.max(0, startVolume - (volumeStep * currentStep));
+          }
+          if (currentStep >= fadeSteps) {
+            clearInterval(fadeInterval);
+            audio.pause();
+            this.cleanupSound(playingId);
+          }
+        }, stepTime);
+
+        playingSound.fadeOutTimeout = setTimeout(() => {
           clearInterval(fadeInterval);
           audio.pause();
           this.cleanupSound(playingId);
-        }
-      }, stepTime);
-
-      playingSound.fadeOutTimeout = setTimeout(() => {
-        clearInterval(fadeInterval);
+        }, settings.fadeOutMs + 100);
+      } else {
+        // Fallback if no gain node
         audio.pause();
         this.cleanupSound(playingId);
-      }, settings.fadeOutMs + 100);
+      }
     } else {
       // Immediate stop
       audio.pause();
@@ -358,31 +374,39 @@ export class AudioEngine {
     const playingSounds = Array.from(this.playingSounds.values());
 
     playingSounds.forEach(playingSound => {
-      const { audio, settings, id: playingId } = playingSound;
+      const { audio, settings, id: playingId, gainNode } = playingSound;
       const fadeOutMs = settings.fadeOutMs || 100; // Use at least 100ms fade out
 
-      // Apply fade out to all sounds
-      const fadeSteps = 20;
-      const stepTime = fadeOutMs / fadeSteps;
-      const startVolume = audio.volume;
-      const volumeStep = startVolume / fadeSteps;
+      // Apply fade out to all sounds using gain node
+      if (gainNode) {
+        const fadeSteps = 20;
+        const stepTime = fadeOutMs / fadeSteps;
+        const startVolume = gainNode.gain.value;
+        const volumeStep = startVolume / fadeSteps;
 
-      let currentStep = 0;
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        audio.volume = Math.max(0, startVolume - (volumeStep * currentStep));
-        if (currentStep >= fadeSteps) {
+        let currentStep = 0;
+        const fadeInterval = setInterval(() => {
+          currentStep++;
+          if (gainNode) {
+            gainNode.gain.value = Math.max(0, startVolume - (volumeStep * currentStep));
+          }
+          if (currentStep >= fadeSteps) {
+            clearInterval(fadeInterval);
+            audio.pause();
+            this.cleanupSound(playingId);
+          }
+        }, stepTime);
+
+        playingSound.fadeOutTimeout = setTimeout(() => {
           clearInterval(fadeInterval);
           audio.pause();
           this.cleanupSound(playingId);
-        }
-      }, stepTime);
-
-      playingSound.fadeOutTimeout = setTimeout(() => {
-        clearInterval(fadeInterval);
+        }, fadeOutMs + 100);
+      } else {
+        // Fallback if no gain node
         audio.pause();
         this.cleanupSound(playingId);
-      }, fadeOutMs + 100);
+      }
     });
   }
 
