@@ -8,7 +8,7 @@ import {
   reorderSounds,
   updateAllSoundsVolumeInTab,
 } from "./store/soundsSlice";
-import { setSettings, setMasterVolume, updateSettings, setEffectValue, setEffectMidiMapping } from "./store/settingsSlice";
+import { setSettings, setMasterVolume, updateSettings } from "./store/settingsSlice";
 import {
   setCurrentProjectPath,
   setDirty,
@@ -38,7 +38,7 @@ import GlobalSettingsModal from "./components/GlobalSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
 import BottomPanel from "./components/BottomPanel";
-import { Project, EffectsState } from "../shared/types";
+import { Project } from "../shared/types";
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -221,11 +221,6 @@ const App: React.FC = () => {
     if (audioEngineRef.current) {
       audioEngineRef.current.setOutputDevice(settings.defaultOutputDeviceId);
     }
-
-    // Update audio effects
-    if (audioEngineRef.current && settings.effects) {
-      audioEngineRef.current.setEffects(settings.effects);
-    }
   }, [settings]);
 
   // Update tabs in sound manager when they change
@@ -320,46 +315,6 @@ const App: React.FC = () => {
         }
       }
 
-      // Handle effects mappings
-      if (message.type === "cc" && settings.effectsMidiMappings) {
-        const effectKeys: Array<keyof EffectsState> = [
-          'speed', 'pan', 'filterLow', 'filterMid', 'filterHigh',
-          'distortion', 'reverb', 'delay'
-        ];
-
-        for (const effectKey of effectKeys) {
-          const mapping = settings.effectsMidiMappings[effectKey];
-          if (
-            mapping &&
-            message.deviceId === mapping.deviceId &&
-            message.ccNumber === mapping.ccNumber &&
-            message.channel === mapping.channel
-          ) {
-            // Calculate value based on effect type
-            let value: number;
-            if (effectKey === 'speed') {
-              // Speed: 0.5 to 2.0
-              value = 0.5 + ((message.value / 127) * 1.5);
-            } else if (effectKey === 'pan') {
-              // Pan: -1 (left) to 1 (right)
-              value = ((message.value / 127) * 2) - 1;
-            } else {
-              // All other effects: 0 to 1
-              value = message.value / 127;
-            }
-
-            console.log(`✅ Matched ${effectKey} mapping!`, {
-              ccValue: message.value,
-              effectValue: value,
-            });
-
-            dispatch(setEffectValue({ effect: effectKey, value }));
-            dispatch(setDirty(true));
-            break;
-          }
-        }
-      }
-
       // Handle stop all mapping
       if (message.type === "noteon" && settings.stopAllMapping) {
         const sam = settings.stopAllMapping;
@@ -381,7 +336,6 @@ const App: React.FC = () => {
     midiHandlerRef.current,
     settings.volumeMapping,
     settings.stopAllMapping,
-    settings.effectsMidiMappings,
     tabs,
     dispatch,
   ]);
@@ -397,40 +351,6 @@ const App: React.FC = () => {
             deviceId: message.deviceId,
             deviceName: message.deviceName,
             note: message.note,
-            channel: message.channel,
-          },
-        }));
-        dispatch(clearMappingTarget());
-        dispatch(setDirty(true));
-      }
-    };
-
-    midiHandlerRef.current.addListener(handleMidiMessage);
-    return () => {
-      midiHandlerRef.current?.removeListener(handleMidiMessage);
-    };
-  }, [midiHandlerRef.current, ui.isMidiMappingMode, ui.mappingTarget, dispatch]);
-
-  // Handle MIDI mapping assignment for effects
-  useEffect(() => {
-    if (!midiHandlerRef.current || !ui.isMidiMappingMode) return;
-
-    const effectKeys: Array<keyof EffectsState> = [
-      'speed', 'pan', 'filterLow', 'filterMid', 'filterHigh',
-      'distortion', 'reverb', 'delay'
-    ];
-
-    if (!ui.mappingTarget || !effectKeys.includes(ui.mappingTarget as keyof EffectsState)) return;
-
-    const handleMidiMessage = (message: any) => {
-      if (message.type === 'cc') {
-        const effectKey = ui.mappingTarget as keyof EffectsState;
-        dispatch(setEffectMidiMapping({
-          effect: effectKey,
-          mapping: {
-            deviceId: message.deviceId,
-            deviceName: message.deviceName,
-            ccNumber: message.ccNumber,
             channel: message.channel,
           },
         }));

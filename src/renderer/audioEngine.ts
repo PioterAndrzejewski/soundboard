@@ -1,4 +1,4 @@
-import { Sound, SoundSettings, EffectsState } from '../shared/types';
+import { Sound, SoundSettings } from '../shared/types';
 
 interface PlayingSound {
   id: string;
@@ -17,32 +17,12 @@ export class AudioEngine {
   private masterVolume: number = 0.8;
   private outputDeviceId: string | undefined;
 
-  // Web Audio API context and effects nodes
+  // Web Audio API context
   private audioContext: AudioContext | null = null;
   private masterGainNode: GainNode | null = null;
-  private pannerNode: StereoPannerNode | null = null;
-  private lowShelfFilter: BiquadFilterNode | null = null;
-  private midPeakFilter: BiquadFilterNode | null = null;
-  private highShelfFilter: BiquadFilterNode | null = null;
-  private distortionNode: WaveShaperNode | null = null;
-  private reverbNode: ConvolverNode | null = null;
-  private delayNode: DelayNode | null = null;
-  private delayFeedback: GainNode | null = null;
-  private delayWet: GainNode | null = null;
-  private reverbWet: GainNode | null = null;
-  private currentEffects: EffectsState = {
-    speed: 1,
-    pan: 0,
-    filterLow: 1,
-    filterMid: 1,
-    filterHigh: 1,
-    distortion: 0,
-    reverb: 0,
-    delay: 0,
-  };
 
   constructor() {
-    console.log('AudioEngine initialized with HTML5 Audio + Web Audio API effects');
+    console.log('AudioEngine initialized with HTML5 Audio + Web Audio API');
     this.initializeWebAudio();
   }
 
@@ -54,197 +34,20 @@ export class AudioEngine {
       this.masterGainNode = this.audioContext.createGain();
       this.masterGainNode.gain.value = this.masterVolume;
 
-      // Create stereo panner
-      this.pannerNode = this.audioContext.createStereoPanner();
-      this.pannerNode.pan.value = 0; // Center
+      // Connect master gain to destination
+      this.masterGainNode.connect(this.audioContext.destination);
 
-      // Create filter nodes (3-band EQ)
-      this.lowShelfFilter = this.audioContext.createBiquadFilter();
-      this.lowShelfFilter.type = 'lowshelf';
-      this.lowShelfFilter.frequency.value = 200;
-      this.lowShelfFilter.gain.value = 0;
-
-      this.midPeakFilter = this.audioContext.createBiquadFilter();
-      this.midPeakFilter.type = 'peaking';
-      this.midPeakFilter.frequency.value = 1000;
-      this.midPeakFilter.gain.value = 0;
-      this.midPeakFilter.Q.value = 1;
-
-      this.highShelfFilter = this.audioContext.createBiquadFilter();
-      this.highShelfFilter.type = 'highshelf';
-      this.highShelfFilter.frequency.value = 3000;
-      this.highShelfFilter.gain.value = 0;
-
-      // Create distortion node
-      this.distortionNode = this.audioContext.createWaveShaper();
-      const initialCurve = this.makeDistortionCurve(0);
-      if (initialCurve) {
-        this.distortionNode.curve = initialCurve as any;
-      }
-      this.distortionNode.oversample = '4x';
-
-      // Create delay effect
-      this.delayNode = this.audioContext.createDelay(2.0);
-      this.delayNode.delayTime.value = 0.3;
-      this.delayFeedback = this.audioContext.createGain();
-      this.delayFeedback.gain.value = 0.3;
-      this.delayWet = this.audioContext.createGain();
-      this.delayWet.gain.value = 0;
-
-      // Create reverb wet gain
-      this.reverbWet = this.audioContext.createGain();
-      this.reverbWet.gain.value = 0;
-
-      // Create simple reverb impulse response
-      this.reverbNode = this.audioContext.createConvolver();
-      this.reverbNode.buffer = this.createReverbImpulse();
-
-      // Connect the effects chain ONCE during initialization
-      this.setupEffectsChain();
-
-      console.log('✅ Web Audio API initialized with effects chain');
+      console.log('✅ Web Audio API initialized');
     } catch (error) {
       console.error('Failed to initialize Web Audio API:', error);
     }
   }
 
-  private setupEffectsChain(): void {
+  private connectSourceToMaster(source: AudioNode): void {
     if (!this.audioContext || !this.masterGainNode) return;
 
-    // Set up the effects chain connections ONCE
-    // These connections will be reused for all sounds
-
-    // Main signal chain: panner -> filters -> distortion
-    this.pannerNode!.connect(this.lowShelfFilter!);
-    this.lowShelfFilter!.connect(this.midPeakFilter!);
-    this.midPeakFilter!.connect(this.highShelfFilter!);
-    this.highShelfFilter!.connect(this.distortionNode!);
-
-    // Distortion output goes to master gain (dry signal path)
-    this.distortionNode!.connect(this.masterGainNode);
-
-    // Delay send/return from distortion output
-    this.distortionNode!.connect(this.delayNode!);
-    this.delayNode!.connect(this.delayFeedback!);
-    this.delayFeedback!.connect(this.delayNode!); // feedback loop
-    this.delayNode!.connect(this.delayWet!);
-    this.delayWet!.connect(this.masterGainNode);
-
-    // Reverb send/return from distortion output
-    this.distortionNode!.connect(this.reverbNode!);
-    this.reverbNode!.connect(this.reverbWet!);
-    this.reverbWet!.connect(this.masterGainNode);
-
-    // Master to destination - ONLY CONNECTED ONCE HERE
-    this.masterGainNode.connect(this.audioContext.destination);
-  }
-
-  private makeDistortionCurve(amount: number): Float32Array | null {
-    const samples = 44100;
-    const curve = new Float32Array(samples);
-
-    if (amount === 0) {
-      // When distortion is 0, create a linear curve (unity gain, no change to signal)
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = x;
-      }
-    } else {
-      // Apply distortion curve
-      const deg = Math.PI / 180;
-      const k = amount * 100;
-
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
-      }
-    }
-    return curve as any;
-  }
-
-  private createReverbImpulse(): AudioBuffer {
-    if (!this.audioContext) throw new Error('AudioContext not initialized');
-
-    const sampleRate = this.audioContext.sampleRate;
-    const length = sampleRate * 2; // 2 second reverb
-    const impulse = this.audioContext.createBuffer(2, length, sampleRate);
-
-    for (let channel = 0; channel < 2; channel++) {
-      const channelData = impulse.getChannelData(channel);
-      for (let i = 0; i < length; i++) {
-        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
-      }
-    }
-
-    return impulse;
-  }
-
-  public setEffects(effects: EffectsState): void {
-    this.currentEffects = { ...effects };
-    this.updateEffectsChain();
-  }
-
-  private updateEffectsChain(): void {
-    if (!this.audioContext) return;
-
-    const effects = this.currentEffects;
-
-    // Update pan
-    if (this.pannerNode) {
-      this.pannerNode.pan.value = effects.pan;
-    }
-
-    // Update filters (3-band EQ)
-    // Map 0.0-1.0 to -24dB to +24dB, with 0.5 being 0dB (no change)
-    if (this.lowShelfFilter) {
-      const lowGain = (effects.filterLow - 0.5) * 48; // 0.5 = 0dB
-      this.lowShelfFilter.gain.value = lowGain;
-    }
-
-    if (this.midPeakFilter) {
-      const midGain = (effects.filterMid - 0.5) * 48; // 0.5 = 0dB
-      this.midPeakFilter.gain.value = midGain;
-    }
-
-    if (this.highShelfFilter) {
-      const highGain = (effects.filterHigh - 0.5) * 48; // 0.5 = 0dB
-      this.highShelfFilter.gain.value = highGain;
-    }
-
-    // Update distortion
-    if (this.distortionNode) {
-      const curve = this.makeDistortionCurve(effects.distortion);
-      if (curve) {
-        this.distortionNode.curve = curve as any;
-      }
-    }
-
-    // Update delay mix
-    if (this.delayWet) {
-      this.delayWet.gain.value = effects.delay;
-    }
-
-    // Update reverb mix
-    if (this.reverbWet) {
-      this.reverbWet.gain.value = effects.reverb;
-    }
-
-    // Update speed and pitch for all playing sounds
-    // Speed: direct playback rate control (changes both pitch and tempo)
-    // Pitch: would need pitch shifter algorithm (not yet implemented - uses speed for now)
-    this.playingSounds.forEach(ps => {
-      // For now, speed controls playback rate
-      // TODO: Implement proper pitch shifting without tempo change
-      ps.audio.playbackRate = effects.speed;
-    });
-  }
-
-  private connectSourceToEffects(source: AudioNode): void {
-    if (!this.audioContext || !this.pannerNode) return;
-
-    // Simply connect the new audio source to the beginning of the pre-configured effects chain
-    // The effects chain is already set up and connected to the destination in setupEffectsChain()
-    source.connect(this.pannerNode);
+    // Connect audio source directly to master gain
+    source.connect(this.masterGainNode);
   }
 
   public setMasterVolume(volume: number): void {
@@ -419,16 +222,16 @@ export class AudioEngine {
       }, stepTime);
     }
 
-    // Connect to Web Audio API effects chain
+    // Connect to Web Audio API master gain
     let source: MediaElementAudioSourceNode | undefined;
     if (this.audioContext) {
       try {
-        console.log(`🎚️ Connecting to Web Audio API effects chain...`);
+        console.log(`🎚️ Connecting to Web Audio API...`);
         source = this.audioContext.createMediaElementSource(audio);
-        this.connectSourceToEffects(source);
-        console.log(`✅ Connected to effects chain`);
+        this.connectSourceToMaster(source);
+        console.log(`✅ Connected to master gain`);
       } catch (error) {
-        console.warn('❌ Failed to connect audio to effects chain:', error);
+        console.warn('❌ Failed to connect audio to master gain:', error);
       }
     }
 
