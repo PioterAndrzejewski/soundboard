@@ -37,7 +37,6 @@ import SoundSettingsModal from "./components/SoundSettingsModal";
 import GlobalSettingsModal from "./components/GlobalSettingsModal";
 import MidiListeningOverlay from "./components/MidiListeningOverlay";
 import ActiveSoundsPanel from "./components/ActiveSoundsPanel";
-import Sidebar from "./components/Sidebar";
 import { Project } from "../shared/types";
 
 const App: React.FC = () => {
@@ -1027,11 +1026,6 @@ const App: React.FC = () => {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          midiHandler={midiHandlerRef.current}
-          soundManager={soundManagerRef.current}
-          onStopAll={handleStopAll}
-        />
         <main className="flex-1 flex flex-col">
           <TabBar />
           <div className="flex-1 overflow-auto p-3">
@@ -1142,6 +1136,7 @@ const App: React.FC = () => {
         <ActiveSoundsPanel
           audioEngine={audioEngineRef.current}
           onStopAll={handleStopAll}
+          midiHandler={midiHandlerRef.current}
         />
       </div>
 
