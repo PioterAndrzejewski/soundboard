@@ -222,6 +222,15 @@ const App: React.FC = () => {
     }
   }, [settings]);
 
+  // Update sound manager when sounds change in Redux
+  useEffect(() => {
+    if (soundManagerRef.current) {
+      sounds.forEach(sound => {
+        soundManagerRef.current!.updateSound(sound.id, sound);
+      });
+    }
+  }, [sounds]);
+
   // Update tabs in sound manager when they change
   useEffect(() => {
     if (soundManagerRef.current) {
