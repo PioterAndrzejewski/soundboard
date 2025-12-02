@@ -9,9 +9,10 @@ import { MidiMessage } from '../../shared/types';
 interface SidebarProps {
   midiHandler: MidiHandler | null;
   soundManager: SoundManager | null;
+  onStopAll: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
+const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager, onStopAll }) => {
   const dispatch = useAppDispatch();
   const settings = useAppSelector(state => state.settings);
   const ui = useAppSelector(state => state.ui);
@@ -19,6 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
   const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
   const [volumeFlash, setVolumeFlash] = useState(false);
   const [prevVolume, setPrevVolume] = useState(settings.masterVolume);
+  const [stopAllFlash, setStopAllFlash] = useState(false);
 
   useEffect(() => {
     if (midiHandler) {
@@ -49,6 +51,15 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
       return () => clearTimeout(timer);
     }
   }, [settings.masterVolume, prevVolume]);
+
+  // Watch for Stop All trigger (from button or MIDI)
+  useEffect(() => {
+    if (ui.lastStopAllTrigger > 0) {
+      setStopAllFlash(true);
+      const timer = setTimeout(() => setStopAllFlash(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [ui.lastStopAllTrigger]);
 
   useEffect(() => {
     if (!midiHandler || !ui.isMidiListening || !ui.mappingTarget) return;
@@ -96,6 +107,19 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
     ? `Mapped to: ${settings.volumeMapping.deviceName} CC${settings.volumeMapping.ccNumber} Ch${settings.volumeMapping.channel + 1}`
     : 'Not mapped';
 
+  const isMappingStopAll = ui.isMidiMappingMode && ui.mappingTarget === 'stopall';
+  const stopAllHasMappingTitle = settings.stopAllMapping
+    ? `Mapped to: ${settings.stopAllMapping.deviceName} Note${settings.stopAllMapping.note} Ch${settings.stopAllMapping.channel + 1}`
+    : 'Not mapped';
+
+  const handleStopAllClick = () => {
+    if (ui.isMidiMappingMode && !ui.mappingTarget) {
+      dispatch(startMappingTarget('stopall'));
+    } else if (!ui.isMidiMappingMode) {
+      onStopAll();
+    }
+  };
+
   return (
     <aside className="w-80 bg-dark-700 border-r-2 border-dark-500 p-6 overflow-y-auto">
       {/* MIDI Mapping Mode Toggle */}
@@ -115,6 +139,57 @@ const Sidebar: React.FC<SidebarProps> = ({ midiHandler, soundManager }) => {
             Click any mappable element to assign MIDI
           </p>
         )}
+      </section>
+
+      {/* Stop All Button */}
+      <section className="mb-6">
+        <div
+          className={`relative rounded transition-all ${
+            ui.isMidiMappingMode
+              ? "ring-2 ring-purple-500 hover:ring-purple-400 cursor-pointer"
+              : ""
+          } ${isMappingStopAll ? "ring-2 ring-green-500 animate-pulse" : ""}`}
+          onClick={handleStopAllClick}
+          title={
+            ui.isMidiMappingMode
+              ? "Click to map MIDI key"
+              : stopAllHasMappingTitle
+          }
+        >
+          <button
+            onClick={(e) => {
+              if (!ui.isMidiMappingMode) {
+                e.stopPropagation();
+                onStopAll();
+              }
+            }}
+            className={`w-full px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+              stopAllFlash
+                ? "bg-red-400 ring-2 ring-red-300 scale-105"
+                : "bg-red-600 hover:bg-red-500"
+            } ${ui.isMidiMappingMode ? "cursor-pointer" : ""}`}
+          >
+            Stop All Sounds
+            <span
+              className={`text-lg transition-opacity ${
+                settings.stopAllMapping ? "opacity-100 text-green-400" : "opacity-30 text-gray-400"
+              }`}
+            >
+              🎹
+            </span>
+          </button>
+          {isMappingStopAll && (
+            <div className="mt-2 p-2 bg-green-900 border border-green-500 rounded text-xs text-green-300 animate-pulse">
+              ⏳ Listening for MIDI key...
+            </div>
+          )}
+          {settings.stopAllMapping && !ui.isMidiMappingMode && (
+            <div className="mt-2 p-2 bg-dark-800 rounded text-xs">
+              <div>Device: {settings.stopAllMapping.deviceName}</div>
+              <div>Note: {settings.stopAllMapping.note} Ch{settings.stopAllMapping.channel + 1}</div>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Master Volume */}

@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
-import { Tab, TabLayoutType, VolumeMapping } from '../../shared/types';
+import { Tab, TabLayoutType } from '../../shared/types';
 
 interface TabsState {
   tabs: Tab[];
@@ -105,18 +105,6 @@ const tabsSlice = createSlice({
         tab.rowLabels[action.payload.rowIndex] = action.payload.label;
       }
     },
-    setTabVolume: (state, action: PayloadAction<{ tabId: string; volume: number }>) => {
-      const tab = state.tabs.find(t => t.id === action.payload.tabId);
-      if (tab) {
-        tab.volume = action.payload.volume;
-      }
-    },
-    setTabVolumeMapping: (state, action: PayloadAction<{ tabId: string; mapping: VolumeMapping | undefined }>) => {
-      const tab = state.tabs.find(t => t.id === action.payload.tabId);
-      if (tab) {
-        tab.volumeMapping = action.payload.mapping;
-      }
-    },
     updateTab: (state, action: PayloadAction<{ id: string; updates: Partial<Tab> }>) => {
       const tab = state.tabs.find(t => t.id === action.payload.id);
       if (tab) {
@@ -136,8 +124,6 @@ export const {
   setTabs,
   setTabRowLabel,
   setTabMidiMapping,
-  setTabVolume,
-  setTabVolumeMapping,
   updateTab,
 } = tabsSlice.actions;
 

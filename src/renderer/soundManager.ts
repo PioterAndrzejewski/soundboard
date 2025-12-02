@@ -33,17 +33,6 @@ export class SoundManager {
     tabs.forEach(tab => this.tabs.set(tab.id, tab));
   }
 
-  private getTabVolume(sound: Sound): number {
-    // Get the tab volume for this sound (default to 1 if no tab or no volume set)
-    if (sound.tabId) {
-      const tab = this.tabs.get(sound.tabId);
-      if (tab && tab.volume !== undefined) {
-        return tab.volume;
-      }
-    }
-    return 1; // Default volume multiplier
-  }
-
   public onSoundTriggered(callback: (soundId: string) => void): void {
     this.onSoundTriggeredCallback = callback;
   }
@@ -64,7 +53,7 @@ export class SoundManager {
         message.note === mapping.note
       ) {
         if (message.type === 'noteon') {
-          this.handleNoteOn(sound, message.value);
+          this.handleNoteOn(sound);
         } else if (message.type === 'noteoff') {
           this.handleNoteOff(sound);
         }
@@ -82,8 +71,7 @@ export class SoundManager {
         if (mapping.ccValue !== undefined) {
           // Only trigger if the CC value matches exactly
           if (message.value === mapping.ccValue) {
-            const tabVolume = this.getTabVolume(sound);
-            this.audioEngine.playSound(sound, 127, tabVolume).catch((error) => {
+            this.audioEngine.playSound(sound).catch((error) => {
               console.error(`Failed to play sound ${sound.name}:`, error);
             });
 
@@ -96,9 +84,8 @@ export class SoundManager {
     });
   }
 
-  private handleNoteOn(sound: Sound, velocity: number): void {
+  private handleNoteOn(sound: Sound): void {
     const mappingKey = this.getMappingKey(sound.midiMapping!);
-    const tabVolume = this.getTabVolume(sound);
 
     // Notify that sound was triggered
     if (this.onSoundTriggeredCallback) {
@@ -107,17 +94,17 @@ export class SoundManager {
 
     if (sound.settings.playMode === 'trigger') {
       // Trigger mode: start playing, don't track for note off
-      this.audioEngine.playSound(sound, velocity, tabVolume).catch((error) => {
+      this.audioEngine.playSound(sound).catch((error) => {
         console.error(`Failed to play sound ${sound.name}:`, error);
       });
     } else if (sound.settings.playMode === 'trigger-stop') {
       // Trigger-stop mode: toggle play/stop, audioEngine handles the logic
-      this.audioEngine.playSound(sound, velocity, tabVolume).catch((error) => {
+      this.audioEngine.playSound(sound).catch((error) => {
         console.error(`Failed to play sound ${sound.name}:`, error);
       });
     } else if (sound.settings.playMode === 'gate') {
       // Gate mode: start playing and track for note off
-      this.audioEngine.playSound(sound, velocity, tabVolume).then((playingId) => {
+      this.audioEngine.playSound(sound).then((playingId) => {
         if (!this.activeSoundsPerMapping.has(mappingKey)) {
           this.activeSoundsPerMapping.set(mappingKey, []);
         }
@@ -127,7 +114,7 @@ export class SoundManager {
       });
     } else if (sound.settings.playMode === 'loop') {
       // Loop mode: toggle play/stop, audioEngine handles the logic (like trigger-stop)
-      this.audioEngine.playSound(sound, velocity, tabVolume).catch((error) => {
+      this.audioEngine.playSound(sound).catch((error) => {
         console.error(`Failed to play sound ${sound.name}:`, error);
       });
     }
@@ -237,8 +224,7 @@ export class SoundManager {
     const sound = this.sounds.get(soundId);
     if (sound) {
       console.log(`✅ Sound found in manager: ${sound.name}`);
-      const tabVolume = this.getTabVolume(sound);
-      await this.audioEngine.playSound(sound, 127, tabVolume);
+      await this.audioEngine.playSound(sound);
     } else {
       console.error(`❌ Sound not found in manager: ${soundId}`);
       console.log(`Available sounds:`, Array.from(this.sounds.keys()));

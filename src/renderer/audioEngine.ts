@@ -129,8 +129,8 @@ export class AudioEngine {
     }
   }
 
-  public async playSound(sound: Sound, velocity: number = 127, tabVolume: number = 1): Promise<string> {
-    console.log(`🎬 playSound called for: ${sound.name}, mode: ${sound.settings.playMode}, velocity: ${velocity}`);
+  public async playSound(sound: Sound): Promise<string> {
+    console.log(`🎬 playSound called for: ${sound.name}, mode: ${sound.settings.playMode}`);
     console.log(`📁 File path: ${sound.filePath}`);
 
     // For trigger mode (restart): if sound is already playing, stop it immediately and restart from beginning
@@ -200,9 +200,8 @@ export class AudioEngine {
       }
     }
 
-    // Calculate volume based on velocity, sound settings, and tab volume
-    const velocityFactor = velocity / 127;
-    const targetVolume = sound.settings.volume * velocityFactor * tabVolume;
+    // Calculate volume based on sound settings and master volume
+    const targetVolume = sound.settings.volume;
     audio.volume = this.calculateVolume(targetVolume);
 
     // Apply fade in for gate, trigger, trigger-stop, and loop modes

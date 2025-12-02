@@ -74,8 +74,6 @@ export interface Tab {
   order: number;
   layoutType?: TabLayoutType; // 'free' (default) or 'apc-mini'
   rowLabels?: string[]; // Labels for each row (for APC layouts)
-  volume?: number; // Layout-specific volume multiplier (0-3, default 1) - allows boosting sounds in this layout
-  volumeMapping?: VolumeMapping; // MIDI CC mapping for layout volume control
   midiMapping?: {
     deviceId: string;
     deviceName: string;

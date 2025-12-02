@@ -11,7 +11,6 @@ interface ExtendedUIState extends UIState {
   lastTriggeredSoundId: string | null;
   lastTriggeredSoundTimestamp: number;
   tabListeningTarget: string | null; // Tab ID when listening for tab MIDI mapping
-  tabVolumeListeningTarget: string | null; // Tab ID when listening for tab volume MIDI mapping
 }
 
 const initialState: ExtendedUIState = {
@@ -28,7 +27,6 @@ const initialState: ExtendedUIState = {
   lastTriggeredSoundId: null,
   lastTriggeredSoundTimestamp: 0,
   tabListeningTarget: null,
-  tabVolumeListeningTarget: null,
 };
 
 const uiSlice = createSlice({
@@ -45,27 +43,20 @@ const uiSlice = createSlice({
       state.isSettingsModalOpen = false;
       state.selectedSoundId = null;
     },
-    startMidiListening: (state, action: PayloadAction<'sound' | 'volume' | 'stopall' | { mode: 'tab'; target: string } | { mode: 'tab-volume'; target: string }>) => {
+    startMidiListening: (state, action: PayloadAction<'sound' | 'volume' | 'stopall' | { mode: 'tab'; target: string }>) => {
       state.isMidiListening = true;
       if (typeof action.payload === 'object' && action.payload.mode === 'tab') {
         state.listeningMode = 'sound'; // Use 'sound' mode for note-based listening
         state.tabListeningTarget = action.payload.target;
-        state.tabVolumeListeningTarget = null;
-      } else if (typeof action.payload === 'object' && action.payload.mode === 'tab-volume') {
-        state.listeningMode = 'volume'; // Use 'volume' mode for CC-based listening
-        state.tabVolumeListeningTarget = action.payload.target;
-        state.tabListeningTarget = null;
       } else {
         state.listeningMode = action.payload as 'sound' | 'volume' | 'stopall';
         state.tabListeningTarget = null;
-        state.tabVolumeListeningTarget = null;
       }
     },
     stopMidiListening: (state) => {
       state.isMidiListening = false;
       state.listeningMode = 'none';
       state.tabListeningTarget = null;
-      state.tabVolumeListeningTarget = null;
     },
     setCurrentProjectPath: (state, action: PayloadAction<string | null>) => {
       state.currentProjectPath = action.payload;
